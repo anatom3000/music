@@ -1,20 +1,25 @@
-import wave, struct
+
+# the sound library
+# import wave, struct
+
+# the cooler sound library
+import numpy as np, simpleaudio as sa
 
 from math import cos, pi
-from sys import argv
 
+TONES = {
+    "c": 0,
+    "d": 2,
+    "e": 4,
+    "f": 5,
+    "g": 7,
+    "a": 9,
+    "b": 11
+}
 
 def get_note(tone, octave, bemol=False, sharp=False):
-    _TONES = {
-        "c": 0,
-        "d": 2,
-        "e": 4,
-        "f": 5,
-        "g": 7,
-        "a": 9,
-        "b": 11
-    }
-    return 12*(octave+1) + _TONES[tone.lower()] + sharp - bemol
+
+    return 12*(octave+1) + TONES[tone.lower()] + sharp - bemol
 
 
 def get_freq(note):
@@ -26,25 +31,52 @@ def tune(freqs, a, t):
         for f in freqs
     ]))
 
+def note():
+    return int(sum([
+        0
+        for af in freqs.items()
+    ]))
 
-sampleRate = 44100 # Hz
+
+sample_rate = 44100 # Hz
 amplitude = 32767
 
-duration = 8
+duration = 2
 
+t = np.arange(0, duration, 1/sample_rate)
+print(t)
 
-obj = wave.open(argv[0].split("/")[-1].split(".")[0]+".wav",'w')
-obj.setnchannels(1) # mono
-obj.setsampwidth(2)
-obj.setframerate(sampleRate)
+for note in TONES:
+    for i in range(duration*sample_rate):
+        t = i/sample_rate
+        chords = [ get_freq(get_note(note, i+2, bemol=True)) for i in range(int(t+1))]
+        value = tune(chords, amplitude, t)
 
-for i in range(duration*sampleRate):
-    t = i/sampleRate
+"""
+# calculate note frequencies
+A_freq = 440
+Csh_freq = A_freq * 2 ** (4 / 12)
+E_freq = A_freq * 2 ** (7 / 12)
 
-    chords = [ get_freq(get_note("c", i+2)) for i in range(int(t))]
+# get timesteps for each sample, T is note duration in seconds
+sample_rate = 44100
+T = 0.25
+t = np.arange(0, T, sample_rate)
 
-    value = tune(chords, amplitude, t)
+# generate sine wave notes
+A_note = np.sin(A_freq * t * 2 * np.pi)
+Csh_note = np.sin(Csh_freq * t * 2 * np.pi)
+E_note = np.sin(E_freq * t * 2 * np.pi)
 
-    obj.writeframesraw( struct.pack('<h', int(value)) )
+# concatenate notes
+audio = np.hstack((A_note, Csh_note, E_note))
+# normalize to 16-bit range
+audio *= 32767 / np.max(np.abs(audio))
+# convert to 16-bit data
+audio = audio.astype(np.int16)
 
-obj.close()
+# start playback
+play_obj = sa.play_buffer(audio, 1, 2, sample_rate)
+
+# wait for playback to finish before exiting
+play_obj.wait_done()"""
