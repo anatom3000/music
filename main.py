@@ -1,11 +1,7 @@
+import numpy as np
+import simpleaudio as sa
 
-# the sound library
-# import wave, struct
-
-# the cooler sound library
-import numpy as np, simpleaudio as sa
-
-from math import cos, pi
+from typing import Callable, Union
 
 TONES = {
     "c": 0,
@@ -17,66 +13,59 @@ TONES = {
     "b": 11
 }
 
-def get_note(tone, octave, bemol=False, sharp=False):
 
-    return 12*(octave+1) + TONES[tone.lower()] + sharp - bemol
-
-
-def get_freq(note):
-    return 440 * 2 ** ((note-69)/12)
-
-def tune(freqs, a, t):
-    return int(sum([
-        (a/len(freqs))*cos(t*2*pi*f)
-        for f in freqs
-    ]))
-
-def note():
-    return int(sum([
-        0
-        for af in freqs.items()
-    ]))
+def Note(tone: str, octave: int, bemol: bool = False, sharp: bool = False) -> int:
+    return 12 * (octave + 1) + TONES[tone.lower()] + sharp - bemol
 
 
-sample_rate = 44100 # Hz
-amplitude = 32767
+def get_frequency_from_note(note: int) -> float:
+    return 440 * 2 ** ((note - 69) / 12)
+
+
+def generate_note(t: float, note: int, amplitude: float = 1.0, freqency_mode: bool = False, timbre: Callable[[float], float] = np.sin) -> float:
+    if not freqency_mode:
+        note = get_frequency_from_note(note)
+
+    return amplitude * timbre(t * 2 * np.pi * note)
+
+
+def mix_notes(t: float, notes: Union[list[int], dict[int, float]]) -> np.array:
+    generated_notes = []
+    if isinstance(notes, dict):
+        for note, amplitude in notes:
+            generated_notes.append(generate_note(t, note, amplitude=amplitude))
+    else:
+        for note in notes:
+            generated_notes.append(generate_note(t, note))
+
+    audio = generated_notes[0]
+    for n in generated_notes[1:]:
+        audio = audio + n
+    # normalize to 16-bit range
+    audio *= 32767 / np.max(np.abs(audio))
+    # convert to 16-bit data
+    audio = audio.astype(np.int16)
+    return audio
+
+def play_sound(sound: np.array, sample_rate: int = 44100, wait: bool = True) -> None:
+    # start playback
+    play_obj = sa.play_buffer(sound, 1, 2, sample_rate)
+    # wait for playback to finish before exiting
+    if wait:
+        play_obj.wait_done()
+
+
+sample_rate = 44100  # Hz
+max_amplitude = 32767
 
 duration = 2
 
-t = np.arange(0, duration, 1/sample_rate)
-print(t)
-
-for note in TONES:
-    for i in range(duration*sample_rate):
-        t = i/sample_rate
-        chords = [ get_freq(get_note(note, i+2, bemol=True)) for i in range(int(t+1))]
-        value = tune(chords, amplitude, t)
-
-"""
-# calculate note frequencies
-A_freq = 440
-Csh_freq = A_freq * 2 ** (4 / 12)
-E_freq = A_freq * 2 ** (7 / 12)
-
-# get timesteps for each sample, T is note duration in seconds
-sample_rate = 44100
-T = 0.25
-t = np.arange(0, T, sample_rate)
-
-# generate sine wave notes
-A_note = np.sin(A_freq * t * 2 * np.pi)
-Csh_note = np.sin(Csh_freq * t * 2 * np.pi)
-E_note = np.sin(E_freq * t * 2 * np.pi)
-
-# concatenate notes
-audio = np.hstack((A_note, Csh_note, E_note))
-# normalize to 16-bit range
-audio *= 32767 / np.max(np.abs(audio))
-# convert to 16-bit data
-audio = audio.astype(np.int16)
-
-# start playback
-play_obj = sa.play_buffer(audio, 1, 2, sample_rate)
-
-# wait for playback to finish before exiting
-play_obj.wait_done()"""
+if __name__ == "__main__":
+    t = np.arange(duration * sample_rate) / sample_rate
+    sound = mix_notes(t, [
+        Note("c", 4),
+        Note("e", 4),
+        Note('a', 4),
+    ])
+    print(sound)
+    play_sound(sound)
