@@ -14,7 +14,7 @@ TONES = {
 }
 
 
-def Note(tone: str, octave: int, bemol: bool = False, sharp: bool = False) -> int:
+def Note(tone: str, octave: int, *, bemol: bool = False, sharp: bool = False) -> int:
     return 12 * (octave + 1) + TONES[tone.lower()] + sharp - bemol
 
 
@@ -22,14 +22,15 @@ def get_frequency_from_note(note: int) -> float:
     return 440 * 2 ** ((note - 69) / 12)
 
 
-def generate_note(t: float, note: int, amplitude: float = 1.0, freqency_mode: bool = False, timbre: Callable[[float], float] = np.sin) -> float:
-    if not freqency_mode:
+def generate_note(t: float, note: int, *, amplitude: float = 1.0, frequency_mode: bool = False,
+                  timbre: Callable[[float], float] = np.sin) -> float:
+    if not frequency_mode:
         note = get_frequency_from_note(note)
 
     return amplitude * timbre(t * 2 * np.pi * note)
 
 
-def mix_notes(t: float, notes: Union[list[int], dict[int, float]]) -> np.array:
+def mix_notes(notes: Union[list[int], dict[int, float]], t: float) -> np.array:
     generated_notes = []
     if isinstance(notes, dict):
         for note, amplitude in notes:
@@ -47,7 +48,8 @@ def mix_notes(t: float, notes: Union[list[int], dict[int, float]]) -> np.array:
     audio = audio.astype(np.int16)
     return audio
 
-def play_sound(sound: np.array, sample_rate: int = 44100, wait: bool = True) -> None:
+
+def play_sound(sound: np.array, *, sample_rate: int = 44100, wait: bool = True) -> None:
     # start playback
     play_obj = sa.play_buffer(sound, 1, 2, sample_rate)
     # wait for playback to finish before exiting
@@ -55,17 +57,27 @@ def play_sound(sound: np.array, sample_rate: int = 44100, wait: bool = True) -> 
         play_obj.wait_done()
 
 
-sample_rate = 44100  # Hz
+def play_notes(notes: Union[list[int], dict[int, float]], duration: float = 1.0, sample_rate: int = 44100,
+               wait: bool = True) -> None:
+    t = np.arange(duration * sample_rate) / sample_rate
+    sound = mix_notes(notes, t)
+    play_sound(sound, sample_rate=sample_rate, wait=wait)
+
+
+def play_chords(chords: list[Union[list[int], dict[int, float]]], duration: float = 1.0, sample_rate: int = 44100,
+                 wait: bool = True) -> None:
+    t = np.arange(duration * sample_rate) / sample_rate
+    sound = np.empty(1)
+
+    for index, notes in enumerate(chords):
+        print(sound)
+        sound = np.concatenate([sound, mix_notes(notes, t/sample_rate)])
+
+
+    play_sound(sound, sample_rate=sample_rate, wait=wait)
+
+
 max_amplitude = 32767
 
-duration = 2
-
 if __name__ == "__main__":
-    t = np.arange(duration * sample_rate) / sample_rate
-    sound = mix_notes(t, [
-        Note("c", 4),
-        Note("e", 4),
-        Note('a', 4),
-    ])
-    print(sound)
-    play_sound(sound)
+    play_chords([[Note("c", a+4) for a in range(i+1)] for i in range(4)], duration=float(input("> ")))
