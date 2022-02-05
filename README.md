@@ -1,2 +1,2 @@
 # music
-Repo containing music experiments with python
+Repo containing music experiments with Python
