@@ -1,83 +1,64 @@
+#!/usr/bin/env python3
+"""Play a sine signal."""
+import argparse
+import sys
+
 import numpy as np
-import simpleaudio as sa
-
-from typing import Callable, Union
-
-TONES = {
-    "c": 0,
-    "d": 2,
-    "e": 4,
-    "f": 5,
-    "g": 7,
-    "a": 9,
-    "b": 11
-}
+import sounddevice as sd
 
 
-def Note(tone: str, octave: int, *, bemol: bool = False, sharp: bool = False) -> int:
-    return 12 * (octave + 1) + TONES[tone.lower()] + sharp - bemol
+def int_or_str(text):
+    """Helper function for argument parsing."""
+    try:
+        return int(text)
+    except ValueError:
+        return text
 
 
-def get_frequency_from_note(note: int) -> float:
-    return 440 * 2 ** ((note - 69) / 12)
+parser = argparse.ArgumentParser(add_help=False)
+parser.add_argument(
+    '-l', '--list-devices', action='store_true',
+    help='show list of audio devices and exit')
+args, remaining = parser.parse_known_args()
+if args.list_devices:
+    print(sd.query_devices())
+    parser.exit(0)
+parser = argparse.ArgumentParser(
+    description=__doc__,
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    parents=[parser])
+parser.add_argument(
+    'frequency', nargs='?', metavar='FREQUENCY', type=float, default=500,
+    help='frequency in Hz (default: %(default)s)')
+parser.add_argument(
+    '-d', '--device', type=int_or_str,
+    help='output device (numeric ID or substring)')
+parser.add_argument(
+    '-a', '--amplitude', type=float, default=0.2,
+    help='amplitude (default: %(default)s)')
+args = parser.parse_args(remaining)
 
+start_idx = 0
 
-def generate_note(t: float, note: int, *, amplitude: float = 1.0, frequency_mode: bool = False,
-                  timbre: Callable[[float], float] = np.sin) -> float:
-    if not frequency_mode:
-        note = get_frequency_from_note(note)
+try:
+    samplerate = sd.query_devices(args.device, 'output')['default_samplerate']
 
-    return amplitude * timbre(t * 2 * np.pi * note)
+    def callback(outdata, frames, time, status):
+        if status:
+            print(status, file=sys.stderr)
+        global start_idx
+        t = (start_idx + np.arange(frames)) / samplerate
+        t = t.reshape(-1, 1)
+        outdata[:] = args.amplitude * np.sin(2 * np.pi * args.frequency * t)
+        start_idx += frames
 
-
-def mix_notes(notes: Union[list[int], dict[int, float]], t: float) -> np.array:
-    generated_notes = []
-    if isinstance(notes, dict):
-        for note, amplitude in notes:
-            generated_notes.append(generate_note(t, note, amplitude=amplitude))
-    else:
-        for note in notes:
-            generated_notes.append(generate_note(t, note))
-
-    audio = generated_notes[0]
-    for n in generated_notes[1:]:
-        audio = audio + n
-    # normalize to 16-bit range
-    audio *= 32767 / np.max(np.abs(audio))
-    # convert to 16-bit data
-    audio = audio.astype(np.int16)
-    return audio
-
-
-def play_sound(sound: np.array, *, sample_rate: int = 44100, wait: bool = True) -> None:
-    # start playback
-    play_obj = sa.play_buffer(sound, 1, 2, sample_rate)
-    # wait for playback to finish before exiting
-    if wait:
-        play_obj.wait_done()
-
-
-def play_notes(notes: Union[list[int], dict[int, float]], duration: float = 1.0, sample_rate: int = 44100,
-               wait: bool = True) -> None:
-    t = np.arange(duration * sample_rate) / sample_rate
-    sound = mix_notes(notes, t)
-    play_sound(sound, sample_rate=sample_rate, wait=wait)
-
-
-def play_chords(chords: list[Union[list[int], dict[int, float]]], duration: float = 1.0, sample_rate: int = 44100,
-                 wait: bool = True) -> None:
-    t = np.arange(duration * sample_rate) / sample_rate
-    sound = np.empty(1)
-
-    for index, notes in enumerate(chords):
-        print(sound)
-        sound = np.concatenate([sound, mix_notes(notes, t/sample_rate)])
-
-
-    play_sound(sound, sample_rate=sample_rate, wait=wait)
-
-
-max_amplitude = 32767
-
-if __name__ == "__main__":
-    play_chords([[Note("c", a+4) for a in range(i+1)] for i in range(4)], duration=float(input("> ")))
+    with sd.OutputStream(device=args.device, channels=1, callback=callback,
+                         samplerate=samplerate):
+        print('#' * 80)
+        print('press Return to quit')
+        print('#' * 80)
+        input()
+except KeyboardInterrupt:
+    parser.exit('')
+except Exception as e:
+    parser.exit(type(e).__name__ + ': ' + str(e))
