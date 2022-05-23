@@ -1,11 +1,14 @@
-import wave
+import pygame
+import pygame.sndarray
+
 import numpy as np
 
 from sys import argv
 
 
+
 SAMPLE_RATE = 44100 # Hz
-MAX_AMPLITUDE = 32767
+MAX_AMPLITUDE = 4096 #32767
 NB_HARMONIQUE = 4
 
 
@@ -22,7 +25,7 @@ TONES = {
 
 def get_note_from_string(note):
     if note[1] in '#b':
-        return get_note(note[0], int(note[2]), bemol=note[1]=='sb', sharp=note[1]=='#')
+        return get_note(note[0], int(note[2]), bemol=note[1]=='b', sharp=note[1]=='#')
     return get_note(note[0], int(note[1]))
 
 def get_raw_note(tone, octave, bemol=False, sharp=False):
@@ -46,12 +49,11 @@ def square(t, freq):
 def tune(t, frequencies, amplitude, wave=sine):
     return amplitude / len(frequencies) * np.sum((wave(t, frequency) for frequency in frequencies))
 
-print("Generating file...")
+## MIXER SETUP
 
-obj = wave.open("sound.wav",'w')
-obj.setnchannels(1) # mono
-obj.setsampwidth(2)
-obj.setframerate(SAMPLE_RATE)
+pygame.mixer.pre_init(SAMPLE_RATE, -16, 1)
+pygame.init()
+
 
 bpm = 110
 song = np.array("c4 c4 c4 d4 e4 e4 d4 d4 c4 e4 d4 d4 c4".split())
@@ -63,8 +65,8 @@ for note in song:
     chords = [ base*(i+1) for i in range(NB_HARMONIQUE) ]
 
     value = tune(t, chords, MAX_AMPLITUDE)
-    for v in value.astype(int):
-        obj.writeframesraw( wave.struct.pack('<h', v) )
-
-obj.close()
-print("Done ! Saved to sound.wav")
+    sound = pygame.sndarray.make_sound(value.astype(np.int16))
+    sound.play(-1)
+    pygame.time.delay(int(60000/bpm))
+    sound.stop()
+    
