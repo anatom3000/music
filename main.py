@@ -9,7 +9,7 @@ NB_HARMONIQUE = 4
 
 bpm = 240
 song = "c3 e3 f3 g3 a3 b3".split() * 10
-env = synth.Enveloppe(attack=0.05, decay=0.1, sustain=0.7, release=0.05)
+env = synth.Enveloppe(attack=0.05, decay=0.1, sustain=0.2, release=0.2)
 
 sound = np.array([])
 
