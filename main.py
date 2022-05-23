@@ -71,7 +71,7 @@ class Note:
         time.sleep(self.envelope.release_time)
         self._stream.stop()
 
-## FRONT END
+## FRONT END²
 def pygame_frontend():
     # frontend imports
     import pygame

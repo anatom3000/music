@@ -31,7 +31,7 @@ def tune(freqs, a, t):
 sampleRate = 44100 # Hz
 amplitude = 32767
 
-duration = 2
+duration = 0.5
 
 
 obj = wave.open(argv[0].split("/")[-1].split(".")[0]+".wav",'w')
@@ -39,11 +39,13 @@ obj.setnchannels(1) # mono
 obj.setsampwidth(2)
 obj.setframerate(sampleRate)
 
-for note in TONES:
-    for i in range(duration*sampleRate):
+song = "cccdeeddceddcc"
+
+for note in song:
+    for i in range(int(duration*sampleRate)):
         t = i/sampleRate
 
-        chords = [ get_freq(get_note(note, i+2, bemol=True)) for i in range(int(t+1))]
+        chords = [ get_freq(get_note(note, 4, bemol=True)) for i in range(int(t+1))]
 
         value = tune(chords, amplitude, t)
 
