@@ -14,5 +14,7 @@ pygame.init()
 def play_from_array(arr, begin=-1):
     sound_obj = pygame.sndarray.make_sound((MAX_AMPLITUDE * arr).astype(np.int16))
     sound_obj.play(begin)
-    pygame.time.delay(int(sound_obj.get_length() * 1000))
-    sound_obj.stop()
+    try:
+        pygame.time.delay(int(sound_obj.get_length() * 1000))
+    finally:
+        sound_obj.stop()
