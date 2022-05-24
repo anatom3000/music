@@ -10,15 +10,16 @@ def square(t, frequency):
 
 
 def triangle(t, frequency):
-    return 2 * \
-           np.absolute(
-               t * frequency
-               - np.floor(
-                   t * frequency
-                   + 0.5
-               )
-           )
+    return 2 * np.absolute(t * frequency - np.floor(t * frequency + 0.5))
 
 
 def sawtooth(t, frequency):
     return (frequency * t) % 1
+
+
+class Pulse:
+    def __init__(self, width):
+        self.width = width
+
+    def __call__(self, t, frequency):
+        return 2 * (((t * frequency / 2) % 1) < self.width) - 1

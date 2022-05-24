@@ -65,17 +65,26 @@ class Enveloppe:
 
 
 class Note:
-    def __init__(self, tone, enveloppe, bpm, oscillator=oscillators.sine):
+    def __init__(self, tone, enveloppe, bpm, oscillator=oscillators.sine, harmonics=np.empty((0, 3))):
         self.tone = tone
         self.enveloppe = enveloppe
         self.oscillator = oscillator
-
-        self.total_length = 60/bpm
+        self.harmonics = np.append(harmonics, np.array([[1, 1, oscillator]]), axis=0)
+        self.total_length = 60 / bpm
         self.lenght = self.total_length - self.enveloppe.release
 
     @classmethod
     def from_string(cls, tone, *args, **kwargs):
         return cls(Tone.from_string(tone), *args, **kwargs)
 
+    def generate_single(self, t, frequency, oscillator):
+        return np.vectorize(self.enveloppe.get_value)(t, self.lenght) * oscillator(t, frequency)
+
     def generate(self, t):
-        return np.vectorize(self.enveloppe.get_value)(t, self.lenght) * self.oscillator(t, self.tone.frequency)
+        # terrible, unoptimized code
+        # if a numpy nerd can fix this I'd be grateful
+        # (at least it works)
+        sound = np.zeros(t.shape)
+        for relative_frequency, relative_amplitude, oscillator in self.harmonics:
+            sound += relative_amplitude * self.generate_single(t, relative_frequency * self.tone.frequency, oscillator)
+        return sound
