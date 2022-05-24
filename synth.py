@@ -43,13 +43,13 @@ class Tone:
 
 
 class Enveloppe:
-    def __init__(self, attack, decay, sustain, release):
+    def __init__(self, attack=0.05, decay=0.0, sustain=1.0, release=0.05):
         self.attack = attack
         self.decay = decay
         self.sustain = sustain
         self.release = release
 
-    def __call__(self, t, lenght=math.inf):
+    def get_value(self, t, lenght=math.inf):
         # release
         if t > lenght:
             return self.sustain * (1 - (t - lenght) / self.release)
@@ -63,18 +63,19 @@ class Enveloppe:
         # hold
         return self.sustain
 
+
 class Note:
-    def __init__(self, tone, enveloppe, lenght, oscillator=oscillators.sine):
+    def __init__(self, tone, enveloppe, bpm, oscillator=oscillators.sine):
         self.tone = tone
         self.enveloppe = enveloppe
         self.oscillator = oscillator
-        self.lenght = lenght
 
-        self.total_lenght = self.lenght + self.enveloppe.release
+        self.total_length = 60/bpm
+        self.lenght = self.total_length - self.enveloppe.release
 
     @classmethod
     def from_string(cls, tone, *args, **kwargs):
         return cls(Tone.from_string(tone), *args, **kwargs)
 
-    def __call__(self, t):
-        return np.vectorize(self.enveloppe)(t, self.lenght) * self.oscillator(t, self.tone.frequency)
+    def generate(self, t):
+        return np.vectorize(self.enveloppe.get_value)(t, self.lenght) * self.oscillator(t, self.tone.frequency)

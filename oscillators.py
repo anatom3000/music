@@ -6,7 +6,7 @@ def sine(t, frequency):
 
 
 def square(t, frequency):
-    return (-1) ** int(t * frequency)
+    return (-1) ** (t * frequency).astype(int)
 
 
 def triangle(t, frequency):
