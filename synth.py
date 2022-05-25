@@ -2,6 +2,8 @@ import math
 
 __all__ = ['Tone', 'Enveloppe', 'Note']
 
+from collections import namedtuple
+
 import numpy as np
 
 import oscillators
@@ -52,7 +54,7 @@ class Enveloppe:
     def get_value(self, t, lenght=math.inf):
         # release
         if t > lenght:
-            return self.sustain * (1 - (t - lenght) / self.release)
+            return max(0, self.sustain * (1 - (t - lenght) / self.release))
         # attack
         if t < self.attack:
             return t / self.attack
@@ -64,27 +66,33 @@ class Enveloppe:
         return self.sustain
 
 
-class Note:
-    def __init__(self, tone, enveloppe, bpm, oscillator=oscillators.sine, harmonics=np.empty((0, 3))):
-        self.tone = tone
-        self.enveloppe = enveloppe
-        self.oscillator = oscillator
-        self.harmonics = np.append(harmonics, np.array([[1, 1, oscillator]]), axis=0)
-        self.total_length = 60 / bpm
-        self.lenght = self.total_length - self.enveloppe.release
+Timbre = namedtuple('Timbre', ['enveloppe', 'harmonics'])
 
-    @classmethod
-    def from_string(cls, tone, *args, **kwargs):
-        return cls(Tone.from_string(tone), *args, **kwargs)
+
+class Note:
+    def __init__(self, tone, timbre: Timbre, length=1.0):
+        self.tone = tone
+        self.timbre = timbre
+
+        self.length = length
+        self.song = None
 
     def generate_single(self, t, frequency, oscillator):
-        return np.vectorize(self.enveloppe.get_value)(t, self.lenght) * oscillator(t, frequency)
+        return np.vectorize(self.timbre.enveloppe.get_value)(t, self.length) * oscillator(t, frequency)
 
     def generate(self, t):
         # terrible, unoptimized code
         # if a numpy nerd can fix this I'd be grateful
         # (at least it works)
         sound = np.zeros(t.shape)
-        for relative_frequency, relative_amplitude, oscillator in self.harmonics:
+        for relative_frequency, relative_amplitude, oscillator in self.timbre.harmonics:
             sound += relative_amplitude * self.generate_single(t, relative_frequency * self.tone.frequency, oscillator)
         return sound
+
+
+class Song:
+    def __init__(self, notes, bpm):
+        self.notes = sorted(notes, key=lambda x: x["start"])
+
+    def generate_notes(self, note):
+        pass
