@@ -1,13 +1,12 @@
 import math
 
-__all__ = ['Tone', 'Enveloppe', 'Note']
-
 from collections import namedtuple
 
 import numpy as np
+import pygame
 
-import oscillators
-
+SAMPLE_RATE = 44100  # Hz
+MAX_AMPLITUDE = 4096
 TONES_ID = {
     "c": 0,
     "d": 2,
@@ -18,21 +17,30 @@ TONES_ID = {
     "b": 11
 }
 
+pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, allowedchanges=0)
+pygame.init()
+
+
+def normalize(arr, volume=1.0):
+    arr = arr / np.max(arr)
+    arr *= MAX_AMPLITUDE * volume
+    return arr
+
 
 class Tone:
-    def __init__(self, tone, octave, bemol=False, sharp=False):
+    def __init__(self, tone, octave, flat=False, sharp=False):
         self.tone = tone
         self.octave = octave
-        self.bemol = bemol
+        self.flat = flat
         self.sharp = sharp
 
-        self.id = Tone._get_note_id(tone, octave, bemol, sharp)
+        self.id = Tone._get_note_id(tone, octave, flat, sharp)
         self.frequency = Tone._get_frequency_from_id(self.id)
 
     @classmethod
     def from_string(cls, note):
         if note[1] in '#b':
-            return cls(note[0], int(note[2]), bemol=note[1] == 'b', sharp=note[1] == '#')
+            return cls(note[0], int(note[2]), flat=note[1] == 'b', sharp=note[1] == '#')
         return cls(note[0], int(note[1]))
 
     @staticmethod
@@ -40,59 +48,111 @@ class Tone:
         return 440 * 2 ** ((note_id - 69) / 12)
 
     @staticmethod
-    def _get_note_id(tone, octave, bemol=False, sharp=False):
-        return 12 * (octave + 1) + TONES_ID[tone.lower()] + sharp - bemol
+    def _get_note_id(tone, octave, flat=False, sharp=False):
+        return 12 * (octave + 1) + TONES_ID[tone.lower()] + sharp - flat
 
 
-class Enveloppe:
+class ADSR:
+    """
+    Modified version of the ADSR class from torchsynth
+        => https://github.com/torchsynth/torchsynth/blob/4f3be6532a80b3298958eb5eca2f653a80ec7562/torchsynth/module.py#L317=
+    """
+
     def __init__(self, attack=0.05, decay=0.0, sustain=1.0, release=0.05):
         self.attack = attack
         self.decay = decay
         self.sustain = sustain
         self.release = release
 
-    def get_value(self, t, lenght=math.inf):
-        # release
-        if t > lenght:
-            return max(0, self.sustain * (1 - (t - lenght) / self.release))
-        # attack
-        if t < self.attack:
-            return t / self.attack
-        t -= self.attack
-        # decay
-        if t < self.decay:
-            return (self.sustain - 1.0) * t / self.decay + 1.0
-        # hold
-        return self.sustain
+    def ramp(self, t, duration=None, start=0, inverse=False):
+        duration = t.shape[0] if duration is None else duration
+
+        ramp = t
+
+        ramp = ramp - start
+        ramp = np.clip(ramp / duration, 0.0, 1.0)
+
+        if inverse:
+            ramp = np.where(duration > 0.0, 1.0 - ramp, ramp)
+
+        return ramp
+
+    def get(self, t, duration: np.array) -> np.array:
+        # Calculations to accommodate attack/decay phase cut by note duration.
+        new_attack = np.minimum(self.attack, duration)
+        new_decay = np.clip(duration - self.attack, 0.0, self.decay)
+
+        attack_signal = self.ramp(t, new_attack)
+
+        a = 1.0 - self.sustain
+        b = self.ramp(t, self.decay, start=new_attack, inverse=True)
+        decay_signal = a * b + self.sustain
+
+        release_signal = self.ramp(t, self.release, start=duration, inverse=True)
+
+        return attack_signal * decay_signal * release_signal
 
 
+# don't question this
 Timbre = namedtuple('Timbre', ['enveloppe', 'harmonics'])
 
 
 class Note:
-    def __init__(self, tone, timbre: Timbre, length=1.0):
+    def __init__(self, tone: Tone, timbre: Timbre, start: float = 0.0, length: float = 1.0):
         self.tone = tone
         self.timbre = timbre
 
-        self.length = length
-        self.song = None
-
-    def generate_single(self, t, frequency, oscillator):
-        return np.vectorize(self.timbre.enveloppe.get_value)(t, self.length) * oscillator(t, frequency)
+        self.start = start
+        self.raw_length = length
+        self.length = self.raw_length + self.timbre.enveloppe.release
 
     def generate(self, t):
         # terrible, unoptimized code
         # if a numpy nerd can fix this I'd be grateful
-        # (at least it works)
+        # (at least it works ?)
+        # update: it's way too slow :/
         sound = np.zeros(t.shape)
         for relative_frequency, relative_amplitude, oscillator in self.timbre.harmonics:
-            sound += relative_amplitude * self.generate_single(t, relative_frequency * self.tone.frequency, oscillator)
-        return sound
+            sound += relative_amplitude * oscillator(t, relative_frequency * self.tone.frequency)
+        return self.timbre.enveloppe.get(t, self.raw_length) * sound
+
+    def get_length(self):
+        return self.length + self.timbre.enveloppe.release
 
 
 class Song:
-    def __init__(self, notes, bpm):
-        self.notes = sorted(notes, key=lambda x: x["start"])
+    def __init__(self, notes):
+        self.notes = sorted(notes, key=lambda x: x.start)
+        self.length = max(map(lambda x: x.start + x.get_length(), self.notes))
 
-    def generate_notes(self, note):
-        pass
+        self.min_buffer_time = 1.0
+
+        self.sound = pygame.sndarray.make_sound(np.zeros(round(self.length * SAMPLE_RATE), dtype=np.int16))
+        self.samples = pygame.sndarray.samples(self.sound)
+        self.time_generated = 0.0
+
+    def generate(self):
+        started_playing = False
+        t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
+        for i, note in enumerate(self.notes):
+            if not started_playing and self.time_generated >= self.min_buffer_time:
+                print("Started playing!")
+                self.sound.play(-1)
+                started_playing = True
+
+            sampled_start = round(SAMPLE_RATE * note.start)
+
+            print(f"{i} generating")
+            print(t.shape)
+            sampled_audio = note.generate(t[sampled_start:] - note.start)
+            print(f"{i} generated")
+            sampled_audio *= MAX_AMPLITUDE / np.max(sampled_audio)
+
+            self.samples[sampled_start:] += sampled_audio.astype(np.int16)
+            self.samples.clip(-MAX_AMPLITUDE, MAX_AMPLITUDE)
+
+            self.time_generated = note.start
+            print(f"Generated note {i} ({self.time_generated})s")
+
+        print("Started playing!")
+        self.sound.play(-1)
