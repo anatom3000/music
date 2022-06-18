@@ -8,6 +8,10 @@ def song_from_lines(bpm, *lines):
         line_notes = line[1].split()
         t = 0.0
         for n in line_notes:
+            if n.count('-') == len(n):
+                t += n.count('-')
+                continue
+
             note_split = n.split('*')
             if len(note_split) == 1:
                 tone_string = note_split[0]

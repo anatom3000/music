@@ -18,6 +18,7 @@ def sawtooth(t, frequency):
 
 
 class Pulse:
+    """Repeating """
     def __init__(self, width):
         self.width = width
 
