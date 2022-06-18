@@ -1,5 +1,3 @@
-import math
-
 from collections import namedtuple
 
 import numpy as np
@@ -37,12 +35,6 @@ class Tone:
         self.id = Tone._get_note_id(tone, octave, flat, sharp)
         self.frequency = Tone._get_frequency_from_id(self.id)
 
-    @classmethod
-    def from_string(cls, note):
-        if note[1] in '#b':
-            return cls(note[0], int(note[2]), flat=note[1] == 'b', sharp=note[1] == '#')
-        return cls(note[0], int(note[1]))
-
     @staticmethod
     def _get_frequency_from_id(note_id):
         return 440 * 2 ** ((note_id - 69) / 12)
@@ -50,6 +42,18 @@ class Tone:
     @staticmethod
     def _get_note_id(tone, octave, flat=False, sharp=False):
         return 12 * (octave + 1) + TONES_ID[tone.lower()] + sharp - flat
+
+
+def ramp(t, duration=None, start=0, inverse=False):
+    duration = t.shape[0] if duration is None else duration
+
+    y = t - start
+    y = np.clip(y / duration, 0.0, 1.0)
+
+    if inverse:
+        y = np.where(duration > 0.0, 1.0 - y, y)
+
+    return y
 
 
 class ADSR:
@@ -64,31 +68,18 @@ class ADSR:
         self.sustain = sustain
         self.release = release
 
-    def ramp(self, t, duration=None, start=0, inverse=False):
-        duration = t.shape[0] if duration is None else duration
-
-        ramp = t
-
-        ramp = ramp - start
-        ramp = np.clip(ramp / duration, 0.0, 1.0)
-
-        if inverse:
-            ramp = np.where(duration > 0.0, 1.0 - ramp, ramp)
-
-        return ramp
-
     def get(self, t, duration: np.array) -> np.array:
         # Calculations to accommodate attack/decay phase cut by note duration.
         new_attack = np.minimum(self.attack, duration)
         new_decay = np.clip(duration - self.attack, 0.0, self.decay)
 
-        attack_signal = self.ramp(t, new_attack)
+        attack_signal = ramp(t, new_attack)
 
         a = 1.0 - self.sustain
-        b = self.ramp(t, self.decay, start=new_attack, inverse=True)
+        b = ramp(t, new_decay, start=new_attack, inverse=True)
         decay_signal = a * b + self.sustain
 
-        release_signal = self.ramp(t, self.release, start=duration, inverse=True)
+        release_signal = ramp(t, self.release, start=duration, inverse=True)
 
         return attack_signal * decay_signal * release_signal
 
@@ -126,33 +117,33 @@ class Song:
         self.length = max(map(lambda x: x.start + x.get_length(), self.notes))
 
         self.min_buffer_time = 1.0
+        self.extra_time = 1.0
 
         self.sound = pygame.sndarray.make_sound(np.zeros(round(self.length * SAMPLE_RATE), dtype=np.int16))
         self.samples = pygame.sndarray.samples(self.sound)
         self.time_generated = 0.0
 
-    def generate(self):
+    def generate_and_play(self, wait=True):
         started_playing = False
         t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
         for i, note in enumerate(self.notes):
-            if not started_playing and self.time_generated >= self.min_buffer_time:
-                print("Started playing!")
+            if (not started_playing) and self.time_generated >= self.min_buffer_time:
                 self.sound.play(-1)
                 started_playing = True
 
             sampled_start = round(SAMPLE_RATE * note.start)
 
-            print(f"{i} generating")
-            print(t.shape)
             sampled_audio = note.generate(t[sampled_start:] - note.start)
-            print(f"{i} generated")
             sampled_audio *= MAX_AMPLITUDE / np.max(sampled_audio)
 
             self.samples[sampled_start:] += sampled_audio.astype(np.int16)
             self.samples.clip(-MAX_AMPLITUDE, MAX_AMPLITUDE)
 
             self.time_generated = note.start
-            print(f"Generated note {i} ({self.time_generated})s")
 
-        print("Started playing!")
-        self.sound.play(-1)
+        if not started_playing:
+            self.sound.play(-1)
+        if wait:
+            pygame.time.wait(int(self.length * 1000))
+            pygame.mixer.stop()
+
