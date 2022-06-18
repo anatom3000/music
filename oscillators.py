@@ -18,7 +18,7 @@ def sawtooth(t, frequency):
 
 
 class Pulse:
-    """Repeating """
+    """Repeating pulse signal on the hish state `width`% of the time"""
     def __init__(self, width):
         self.width = width
 

@@ -4,8 +4,6 @@ import oscillators
 from string_synth_utils import song_from_lines
 from synth import Timbre, ADSR
 
-oscillators.sine = oscillators.Pulse(0.25)
-
 bpm = 360
 melody = "c4 c4 c4 d4 2*e4 2*d4 c4 e4 d4 d4 4*c4"
 timbre = Timbre(
