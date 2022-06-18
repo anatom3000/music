@@ -1,3 +1,4 @@
+import time
 from collections import namedtuple
 
 import numpy as np
@@ -44,7 +45,7 @@ class Tone:
         return 12 * (octave + 1) + TONES_ID[tone.lower()] + sharp - flat
 
 
-def ramp(t, duration=None, start=0, inverse=False):
+def ramp(t, duration=None, start=0.0, inverse=False):
     duration = t.shape[0] if duration is None else duration
 
     y = t - start
@@ -130,6 +131,7 @@ class Song:
             if (not started_playing) and self.time_generated >= self.min_buffer_time:
                 self.sound.play(-1)
                 started_playing = True
+                started_playing_at = time.perf_counter()
 
             sampled_start = round(SAMPLE_RATE * note.start)
 
@@ -144,6 +146,6 @@ class Song:
         if not started_playing:
             self.sound.play(-1)
         if wait:
-            pygame.time.wait(int(self.length * 1000))
+            generation_time = time.perf_counter() - started_playing_at
+            pygame.time.wait(int((self.length - generation_time) * 1000))
             pygame.mixer.stop()
-
