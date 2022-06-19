@@ -1,7 +1,9 @@
-from synth import Tone, Note, Song
+from typing import Iterable
+
+from synth import Tone, Note, Song, Timbre
 
 
-def song_from_lines(bpm, lines):
+def song_from_lines(bpm: int, lines: Iterable[tuple[Timbre, str]]) -> Song:
     notes = []
     for line in lines:
         timbre = line[0]
@@ -15,7 +17,7 @@ def song_from_lines(bpm, lines):
             note_split = n.split('*')
             if len(note_split) == 1:
                 tone_string = note_split[0]
-                note_length = 1
+                note_length = 1.0
             else:
                 tone_string = note_split[1]
                 note_length = float(note_split[0])
@@ -31,7 +33,7 @@ def song_from_lines(bpm, lines):
     return Song(notes)
 
 
-def tone_from_string(note):
+def tone_from_string(note: str) -> Tone:
     if note[1] in '#b':
         return Tone(note[0], int(note[2]), flat=note[1] == 'b', sharp=note[1] == '#')
     return Tone(note[0], int(note[1]))

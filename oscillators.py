@@ -1,26 +1,30 @@
 import numpy as np
 
+"""
+Module containing various types of oscillators.
+"""
 
-def sine(t, frequency):
+
+def sine(t: np.ndarray, frequency: float = 1.0) -> np.ndarray:
     return np.sin(t * 2 * np.pi * frequency)
 
 
-def square(t, frequency):
+def square(t: np.ndarray, frequency: float = 1.0) -> np.ndarray:
     return (-1) ** (t * frequency).astype(int)
 
 
-def triangle(t, frequency):
+def triangle(t: np.ndarray, frequency: float = 1.0) -> np.ndarray:
     return 2 * np.absolute(t * frequency - np.floor(t * frequency + 0.5))
 
 
-def sawtooth(t, frequency):
+def sawtooth(t: np.ndarray, frequency: float = 1.0) -> np.ndarray:
     return (frequency * t) % 1
 
 
 class Pulse:
-    """Repeating pulse signal on the hish state `width`% of the time"""
-    def __init__(self, width):
+    """A pulse wave of a give pulse width"""
+    def __init__(self, width: float):
         self.width = width
 
-    def __call__(self, t, frequency):
+    def __call__(self, t: np.ndarray, frequency: float = 1.0) -> np.ndarray:
         return 2 * (((t * frequency / 2) % 1) < self.width) - 1
