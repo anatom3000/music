@@ -1,7 +1,7 @@
 from synth import Tone, Note, Song
 
 
-def song_from_lines(bpm, *lines):
+def song_from_lines(bpm, lines):
     notes = []
     for line in lines:
         timbre = line[0]
@@ -18,13 +18,14 @@ def song_from_lines(bpm, *lines):
                 note_length = 1
             else:
                 tone_string = note_split[1]
-                note_length = int(note_split[0])
+                note_length = float(note_split[0])
 
-            notes.append(Note(tone=tone_from_string(tone_string),
-                              timbre=timbre,
-                              start=t * 60 / bpm,
-                              length=note_length * 60 / bpm,
-                              ))
+            notes.append(Note(
+                tone=tone_from_string(tone_string),
+                timbre=timbre,
+                start=t * 60 / bpm,
+                length=note_length * 60 / bpm,
+            ))
             t += note_length
 
     return Song(notes)

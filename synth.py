@@ -1,5 +1,6 @@
 import time
-from collections import namedtuple
+
+from dataclasses import dataclass
 
 import numpy as np
 import pygame
@@ -15,6 +16,7 @@ TONES_ID = {
     "a": 9,
     "b": 11
 }
+EPSILON = 1e-6
 
 pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, allowedchanges=0)
 pygame.init()
@@ -24,6 +26,18 @@ def normalize(arr, volume=1.0):
     arr = arr / np.max(arr)
     arr *= MAX_AMPLITUDE * volume
     return arr
+
+
+def ramp(t, duration=None, start=0.0, inverse=False):
+    duration = t.shape[0] if duration is None else duration
+
+    y = t - start
+    y = np.clip(y / duration, 0.0, 1.0)
+
+    if inverse:
+        y = np.where(duration > 0.0, 1.0 - y, y)
+
+    return y
 
 
 class Tone:
@@ -45,18 +59,6 @@ class Tone:
         return 12 * (octave + 1) + TONES_ID[tone.lower()] + sharp - flat
 
 
-def ramp(t, duration=None, start=0.0, inverse=False):
-    duration = t.shape[0] if duration is None else duration
-
-    y = t - start
-    y = np.clip(y / duration, 0.0, 1.0)
-
-    if inverse:
-        y = np.where(duration > 0.0, 1.0 - y, y)
-
-    return y
-
-
 class ADSR:
     """
     Modified version of the ADSR class from torchsynth
@@ -64,10 +66,10 @@ class ADSR:
     """
 
     def __init__(self, attack=0.05, decay=0.0, sustain=1.0, release=0.05):
-        self.attack = attack
-        self.decay = decay
-        self.sustain = sustain
-        self.release = release
+        self.attack = attack + EPSILON
+        self.decay = decay + EPSILON
+        self.sustain = sustain + EPSILON
+        self.release = release + EPSILON
 
     def get(self, t, duration: np.array) -> np.array:
         # Calculations to accommodate attack/decay phase cut by note duration.
@@ -85,8 +87,10 @@ class ADSR:
         return attack_signal * decay_signal * release_signal
 
 
-# don't question this
-Timbre = namedtuple('Timbre', ['enveloppe', 'harmonics'])
+@dataclass
+class Timbre:
+    enveloppe: ADSR
+    harmonics: np.array
 
 
 class Note:
