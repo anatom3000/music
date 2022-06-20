@@ -30,7 +30,8 @@ def normalize(arr: np.ndarray, volume: float = 1.0) -> np.ndarray:
     return arr
 
 
-def ramp(t: np.ndarray, duration: Optional[Union[np.ndarray, float]] = None, start: Union[np.ndarray, float] = 0.0, inverse: bool = False) -> np.ndarray:
+def ramp(t: np.ndarray, duration: Optional[Union[np.ndarray, float]] = None, start: Union[np.ndarray, float] = 0.0,
+         inverse: bool = False) -> np.ndarray:
     duration = t.shape[0] if duration is None else duration
 
     y = t - start
@@ -40,6 +41,14 @@ def ramp(t: np.ndarray, duration: Optional[Union[np.ndarray, float]] = None, sta
         y = np.where(duration > 0.0, 1.0 - y, y)
 
     return y
+
+
+def play(samples: np.ndarray, wait: bool = True) -> None:
+    sound = pygame.sndarray.make_sound(samples)
+    sound.play(-1)
+    if wait:
+        pygame.time.wait(int(samples.shape[0] / SAMPLE_RATE * 1000))
+        pygame.mixer.stop()
 
 
 class Tone:
@@ -88,6 +97,9 @@ class ADSR:
 
         return attack_signal * decay_signal * release_signal
 
+    def __mul__(self, other: float) -> 'ADSR':
+        return self.__class__(self.attack * other, self.decay * other, self.sustain * other, self.release * other)
+
 
 @dataclass
 class Timbre:
@@ -126,32 +138,25 @@ class Song:
         self.min_buffer_time = 1.0
         self.extra_time = 1.0
 
-        self.sound = pygame.sndarray.make_sound(np.zeros(round(self.length * SAMPLE_RATE), dtype=np.int16))
-        self.samples = pygame.sndarray.samples(self.sound)
         self.time_generated = 0.0
 
-    def generate_and_play(self, wait: bool = True) -> None:
+    def generate(self) -> np.ndarray:
         started_playing = False
         t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
+        samples = np.zeros(t.shape, dtype=np.int16)
         for i, note in enumerate(self.notes):
-            if (not started_playing) and self.time_generated >= self.min_buffer_time:
-                self.sound.play(-1)
-                started_playing = True
-                started_playing_at = time.perf_counter()
-
             sampled_start = round(SAMPLE_RATE * note.start)
 
             sampled_audio = note.generate(t[sampled_start:] - note.start)
             sampled_audio *= MAX_AMPLITUDE / np.max(sampled_audio)
 
-            self.samples[sampled_start:] += sampled_audio.astype(np.int16)
-            self.samples.clip(-MAX_AMPLITUDE, MAX_AMPLITUDE)
+            samples[sampled_start:] += sampled_audio.astype(np.int16)
+            samples.clip(-MAX_AMPLITUDE, MAX_AMPLITUDE)
 
             self.time_generated = note.start
 
-        if not started_playing:
-            self.sound.play(-1)
-        if wait:
-            generation_time = time.perf_counter() - started_playing_at
-            pygame.time.wait(int((self.length - generation_time) * 1000))
-            pygame.mixer.stop()
+        return samples
+
+    def generate_and_play(self, wait: bool = True) -> None:
+        samples = self.generate()
+        play(samples, wait)
