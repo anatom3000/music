@@ -23,6 +23,7 @@ def sawtooth(t: np.ndarray, frequency: float = 1.0) -> np.ndarray:
 
 class Pulse:
     """A pulse wave of a give pulse width"""
+
     def __init__(self, width: float):
         self.width = width
 

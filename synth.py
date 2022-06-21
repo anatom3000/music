@@ -1,8 +1,6 @@
-import time
 from collections.abc import Sequence
-
 from dataclasses import dataclass
-from typing import Optional, NoReturn, Union
+from typing import Optional, Union
 
 import numpy as np
 import pygame
@@ -24,7 +22,7 @@ pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, allowedchanges=0)
 pygame.init()
 
 
-def normalize(arr: np.ndarray, volume: float = 1.0) -> np.ndarray:
+def normalize(arr: np.ndarray, *, volume: float = 1.0) -> np.ndarray:
     arr = arr / np.max(arr)
     arr *= MAX_AMPLITUDE * volume
     return arr
@@ -43,7 +41,7 @@ def ramp(t: np.ndarray, duration: Optional[Union[np.ndarray, float]] = None, sta
     return y
 
 
-def play(samples: np.ndarray, wait: bool = True) -> None:
+def play(samples: np.ndarray, *, wait: bool = True) -> None:
     sound = pygame.sndarray.make_sound(samples)
     sound.play(-1)
     if wait:
@@ -52,21 +50,21 @@ def play(samples: np.ndarray, wait: bool = True) -> None:
 
 
 class Tone:
-    def __init__(self, tone: str, octave: int, flat: bool = False, sharp: bool = False):
+    def __init__(self, tone: str, octave: int, *, flat: bool = False, sharp: bool = False):
         self.tone = tone
         self.octave = octave
         self.flat = flat
         self.sharp = sharp
 
-        self.id = Tone._get_note_id(tone, octave, flat, sharp)
+        self.id = Tone._get_note_id(tone, octave, flat=flat, sharp=sharp)
         self.frequency = Tone._get_frequency_from_id(self.id)
 
     @staticmethod
-    def _get_frequency_from_id(note_id: int) -> float:
+    def _get_frequency_from_id(note_id: int, /) -> float:
         return 440 * 2 ** ((note_id - 69) / 12)
 
     @staticmethod
-    def _get_note_id(tone: str, octave: int, flat: bool = False, sharp: bool = False) -> int:
+    def _get_note_id(tone: str, octave: int, *, flat: bool = False, sharp: bool = False) -> int:
         return 12 * (octave + 1) + TONES_ID[tone.lower()] + sharp - flat
 
 
@@ -76,7 +74,7 @@ class ADSR:
         => https://github.com/torchsynth/torchsynth/blob/4f3be6532a80b3298958eb5eca2f653a80ec7562/torchsynth/module.py#L317=
     """
 
-    def __init__(self, attack: float = 0.05, decay: float = 0.0, sustain: float = 1.0, release: float = 0.05):
+    def __init__(self, *, attack: float = 0.05, decay: float = 0.0, sustain: float = 1.0, release: float = 0.05):
         self.attack = attack + EPSILON
         self.decay = decay + EPSILON
         self.sustain = sustain + EPSILON
@@ -141,7 +139,6 @@ class Song:
         self.time_generated = 0.0
 
     def generate(self) -> np.ndarray:
-        started_playing = False
         t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
         samples = np.zeros(t.shape, dtype=np.int16)
         for i, note in enumerate(self.notes):
@@ -157,6 +154,12 @@ class Song:
 
         return samples
 
-    def generate_and_play(self, wait: bool = True) -> None:
+    def generate_and_play(self, *, wait: bool = True, debug: bool = False) -> None:
+        if debug:
+            print("Starting generating sound...")
         samples = self.generate()
-        play(samples, wait)
+        if debug:
+            print("Finished generating, started playing...")
+        play(samples, wait=wait)
+        if debug:
+            print("Finished playing!")
