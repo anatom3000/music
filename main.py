@@ -1,8 +1,8 @@
 import numpy as np
 
-import oscillators
-from string_synth_utils import song_from_lines
-from synth import Timbre, ADSR
+from synth.oscillators import *
+from synth.utils import *
+from synth.note import *
 
 
 def main() -> None:
@@ -11,7 +11,7 @@ def main() -> None:
     timbre = Timbre(
         enveloppe=ADSR(attack=.05, decay=.05, sustain=0.7, release=.1),
         harmonics=np.array(
-            [[1, 1.0, oscillators.sawtooth], [2, 1.0, oscillators.sine]]
+            [[1, 1.0, sawtooth], [2, 1.0, sine]]
         )
     )
 
