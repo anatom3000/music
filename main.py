@@ -1,8 +1,6 @@
-import numpy as np
-
+from synth.note import *
 from synth.oscillators import *
 from synth.utils import *
-from synth.note import *
 
 
 def main() -> None:
