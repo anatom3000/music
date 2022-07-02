@@ -100,11 +100,15 @@ class Note(Playable):
         self.raw_length = length
         self.length = self.raw_length + self.timbre.enveloppe.release
 
-    def generate(self, t: np.ndarray) -> np.ndarray:
+    def generate(self, t: np.ndarray, max_amplitude: int) -> np.ndarray:
         # terrible, unoptimized code
         # if a numpy nerd can fix this I'd be grateful
         # (at least it works ?)
         sound = np.zeros(t.shape)
         for relative_frequency, relative_amplitude, oscillator in self.timbre.harmonics:
             sound += relative_amplitude * oscillator(t, relative_frequency * self.tone.frequency)
-        return self.timbre.enveloppe.get(t, self.raw_length) * sound
+
+        sound *= self.timbre.enveloppe.get(t, self.raw_length)
+        sound *= max_amplitude / np.max(sound)
+
+        return sound.astype(np.int16)
