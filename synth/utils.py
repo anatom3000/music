@@ -1,7 +1,8 @@
 from typing import Iterable
 
 from synth import Song
-from synth.note import Timbre, Note, Tone
+from synth.misc import Timbre, Tone
+from synth.playables import Note
 
 
 def song_from_lines(bpm: int, lines: Iterable[tuple[Timbre, str]]) -> Song:

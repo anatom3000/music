@@ -1,24 +1,13 @@
-from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
 import numpy as np
 import pygame
 
-SAMPLE_RATE = 44100  # Hz
-MAX_AMPLITUDE = 4096
-
+from synth.playables import Playable
+from synth.constants import SAMPLE_RATE, MAX_AMPLITUDE
 
 pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, allowedchanges=0)
 pygame.init()
-
-
-class Playable(ABC):
-    start: float
-    length: float
-
-    @abstractmethod
-    def generate(self, t: np.ndarray, max_amplitude: int) -> np.ndarray:
-        pass
 
 
 class Song:

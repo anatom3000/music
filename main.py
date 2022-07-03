@@ -1,4 +1,4 @@
-from synth.note import *
+from synth.modulators import ADSR
 from synth.oscillators import *
 from synth.utils import *
 
@@ -20,7 +20,7 @@ def main() -> None:
 
 
 def sample_test() -> None:
-    from synth.sample import Sample
+    from synth.playables import Sample
     s = Sample("samples/unity_mono_44.1k.wav")
     song = Song([s])
     song.generate_and_play(debug=True)
