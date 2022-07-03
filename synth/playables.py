@@ -7,7 +7,6 @@ from scipy.io import wavfile
 from scipy.signal import resample
 
 from synth.constants import MAX_AMPLITUDE, SAMPLE_RATE
-from synth.misc import Tone, Timbre
 
 
 class Playable(ABC):
@@ -17,29 +16,6 @@ class Playable(ABC):
     @abstractmethod
     def generate(self, t: np.ndarray, max_amplitude: int) -> np.ndarray:
         pass
-
-
-class Note(Playable):
-    def __init__(self, tone: Tone, timbre: Timbre, start: float = 0.0, length: float = 1.0):
-        self.tone = tone
-        self.timbre = timbre
-
-        self.start = start
-        self.raw_length = length
-        self.length = self.raw_length + self.timbre.enveloppe.release
-
-    def generate(self, t: np.ndarray, max_amplitude: int) -> np.ndarray:
-        # terrible, unoptimized code
-        # if a numpy nerd can fix this I'd be grateful
-        # (at least it works ?)
-        sound = np.zeros(t.shape)
-        for relative_frequency, relative_amplitude, oscillator in self.timbre.harmonics:
-            sound += relative_amplitude * oscillator(t, relative_frequency * self.tone.frequency)
-
-        sound *= self.timbre.enveloppe.get(t, self.raw_length)
-        sound *= max_amplitude / np.max(sound)
-
-        return sound.astype(np.int16)
 
 
 class Sample(Playable):
@@ -66,5 +42,6 @@ class Sample(Playable):
         self.data = (self.data / np.max(self.data) * MAX_AMPLITUDE).astype(np.int16)
 
     def generate(self, t: np.ndarray, max_amplitude: int) -> np.ndarray:
-        time_frame = t.shape[0]
-        return self.data[:time_frame]
+        local_data = self.data.copy()
+        local_data.resize(t.shape)
+        return local_data

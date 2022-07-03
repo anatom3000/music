@@ -1,6 +1,7 @@
-from synth.modulators import ADSR
 from synth.oscillators import *
 from synth.utils import *
+from synth.note import *
+from synth.playables import Sample
 
 
 def main() -> None:
@@ -16,16 +17,9 @@ def main() -> None:
     song = song_from_lines(bpm, [
         (timbre, melody)
     ])
-    song.generate_and_play(debug=True)
-
-
-def sample_test() -> None:
-    from synth.playables import Sample
-    s = Sample("samples/unity_mono_44.1k.wav")
-    song = Song([s])
+    song.add([Sample("samples/unity_mono_44.1k.wav", length=(i+1)/4, start=i) for i in range(5)])
     song.generate_and_play(debug=True)
 
 
 if __name__ == '__main__':
     main()
-    sample_test()

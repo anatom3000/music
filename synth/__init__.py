@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Union
 
 import numpy as np
 import pygame
@@ -19,6 +20,14 @@ class Song:
         self.extra_time = 1.0
 
         self.time_generated = 0.0
+
+    def add(self, playable: Union[Playable, Sequence[Playable]]):
+        if isinstance(playable, Sequence):
+            self.notes.extend(playable)
+        else:
+            self.notes.append(playable)
+
+        self.length = max(map(lambda x: x.start + x.length, self.notes))
 
     def generate(self) -> np.ndarray:
         t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))

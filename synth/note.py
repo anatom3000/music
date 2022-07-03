@@ -1,9 +1,31 @@
-from typing import Union, Optional
+from dataclasses import dataclass
 
 import numpy as np
+from typing import Union, Optional
 
-EPSILON = 1e-6
+from synth import Playable
+from synth.constants import EPSILON
 
+
+class Tone:
+    TONES_ID = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
+
+    def __init__(self, tone: str, octave: int, *, flat: bool = False, sharp: bool = False):
+        self.tone = tone
+        self.octave = octave
+        self.flat = flat
+        self.sharp = sharp
+
+        self.id = Tone._get_note_id(tone, octave, flat=flat, sharp=sharp)
+        self.frequency = Tone._get_frequency_from_id(self.id)
+
+    @staticmethod
+    def _get_frequency_from_id(id: int, /) -> float:
+        return 440 * 2 ** ((id - 69) / 12)
+
+    @staticmethod
+    def _get_note_id(tone: str, octave: int, *, flat: bool = False, sharp: bool = False) -> int:
+        return 12 * (octave + 1) + Tone.TONES_ID[tone.lower()] + sharp - flat
 
 class ADSR:
     """
@@ -53,3 +75,32 @@ class ADSR:
             y = np.where(duration > 0.0, 1.0 - y, y)
 
         return y
+
+
+@dataclass
+class Timbre:
+    enveloppe: ADSR
+    harmonics: np.ndarray
+
+
+class Note(Playable):
+    def __init__(self, tone: Tone, timbre: Timbre, start: float = 0.0, length: float = 1.0):
+        self.tone = tone
+        self.timbre = timbre
+
+        self.start = start
+        self.raw_length = length
+        self.length = self.raw_length + self.timbre.enveloppe.release
+
+    def generate(self, t: np.ndarray, max_amplitude: int) -> np.ndarray:
+        # terrible, unoptimized code
+        # if a numpy nerd can fix this I'd be grateful
+        # (at least it works ?)
+        sound = np.zeros(t.shape)
+        for relative_frequency, relative_amplitude, oscillator in self.timbre.harmonics:
+            sound += relative_amplitude * oscillator(t, relative_frequency * self.tone.frequency)
+
+        sound *= self.timbre.enveloppe.get(t, self.raw_length)
+        sound *= max_amplitude / np.max(sound)
+
+        return sound.astype(np.int16)
