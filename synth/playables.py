@@ -24,13 +24,10 @@ class Sample(Playable):
 
         raw_sample_rate, self.data = wavfile.read(self.file)
 
-        print("Resampling...")
         if raw_sample_rate != SAMPLE_RATE:
-            print(f"Correcting rate from {raw_sample_rate} to {SAMPLE_RATE}")
             # https://stackoverflow.com/questions/64782091/how-to-resample-a-wav-sound-file-which-is-being-read-using-the-wavfile-read
             sample_number = round(self.data.shape[0] * float(SAMPLE_RATE) / raw_sample_rate)
             self.data = resample(self.data, sample_number)
-        print("Resampled!")
 
         self.start = start
 

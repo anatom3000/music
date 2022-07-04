@@ -3,29 +3,42 @@ from dataclasses import dataclass
 import numpy as np
 from typing import Union, Optional
 
-from synth import Playable
+from synth.playables import Playable
 from synth.constants import EPSILON
 
 
 class Tone:
     TONES_ID = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
 
-    def __init__(self, tone: str, octave: int, *, flat: bool = False, sharp: bool = False):
-        self.tone = tone
-        self.octave = octave
-        self.flat = flat
-        self.sharp = sharp
+    def __init__(self, id):
+        self.id = id
 
-        self.id = Tone._get_note_id(tone, octave, flat=flat, sharp=sharp)
-        self.frequency = Tone._get_frequency_from_id(self.id)
+    @classmethod
+    def from_notation(cls, tone: str, octave: int, *, flat: bool = False, sharp: bool = False):
+        return cls(cls.id_from_notation(tone, octave, flat=flat, sharp=sharp))
+
+    @classmethod
+    def from_string(cls, note: str) -> "Tone":
+        if note[1] in '#b':
+            return cls.from_notation(note[0], int(note[2]), flat=note[1] == 'b', sharp=note[1] == '#')
+        return cls.from_notation(note[0], int(note[1]))
+
+    @property
+    def frequency(self) -> float:
+        return self.id_to_freqency(self.id)
 
     @staticmethod
-    def _get_frequency_from_id(id: int, /) -> float:
+    def id_to_freqency(id):
         return 440 * 2 ** ((id - 69) / 12)
 
     @staticmethod
-    def _get_note_id(tone: str, octave: int, *, flat: bool = False, sharp: bool = False) -> int:
+    def to_rel_frequency(st: Union[float, np.ndarray]):
+        return 2 ** (st / 12)
+
+    @staticmethod
+    def id_from_notation(tone: str, octave: int, *, flat: bool = False, sharp: bool = False) -> int:
         return 12 * (octave + 1) + Tone.TONES_ID[tone.lower()] + sharp - flat
+
 
 class ADSR:
     """
@@ -34,11 +47,12 @@ class ADSR:
     Can be used for the pitch or the amplitude enveloppe
     """
 
-    def __init__(self, *, attack: float, decay: float, sustain: float, release: float):
+    def __init__(self, *, attack: float, decay: float, sustain: float, release: float, level: float = 1.0):
         self.attack = attack + EPSILON
         self.decay = decay + EPSILON
         self.sustain = sustain + EPSILON
         self.release = release + EPSILON
+        self.level = level
 
     def get(self, t: np.ndarray, duration: Union[np.ndarray, float]) -> np.ndarray:
         # Calculations to accommodate attack/decay phase cut by note duration.
@@ -53,7 +67,7 @@ class ADSR:
 
         release_signal = self.ramp(t, self.release, start=duration, inverse=True)
 
-        return attack_signal * decay_signal * release_signal
+        return attack_signal * decay_signal * release_signal * self.level
 
     def __mul__(self, other: float) -> 'ADSR':
         return self.__class__(
@@ -79,7 +93,8 @@ class ADSR:
 
 @dataclass
 class Timbre:
-    enveloppe: ADSR
+    pitch_enveloppe: ADSR
+    amplitude_enveloppe: ADSR
     harmonics: np.ndarray
 
 
@@ -90,17 +105,17 @@ class Note(Playable):
 
         self.start = start
         self.raw_length = length
-        self.length = self.raw_length + self.timbre.enveloppe.release
+        self.length = self.raw_length + self.timbre.amplitude_enveloppe.release
 
     def generate(self, t: np.ndarray, max_amplitude: int) -> np.ndarray:
         # terrible, unoptimized code
         # if a numpy nerd can fix this I'd be grateful
-        # (at least it works ?)
+        # (at least it works?)
         sound = np.zeros(t.shape)
         for relative_frequency, relative_amplitude, oscillator in self.timbre.harmonics:
-            sound += relative_amplitude * oscillator(t, relative_frequency * self.tone.frequency)
+            sound += relative_amplitude * oscillator(t, relative_frequency * self.tone.frequency * Tone.to_rel_frequency(self.timbre.pitch_enveloppe.get(t, self.raw_length)))
 
-        sound *= self.timbre.enveloppe.get(t, self.raw_length)
+        sound *= self.timbre.amplitude_enveloppe.get(t, self.raw_length)
         sound *= max_amplitude / np.max(sound)
 
         return sound.astype(np.int16)
