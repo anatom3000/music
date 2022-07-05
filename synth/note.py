@@ -1,7 +1,8 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import numpy as np
-from typing import Union, Optional
+from typing import Union, Optional, Callable
 
 from synth.playables import Playable
 from synth.constants import EPSILON
@@ -92,10 +93,17 @@ class ADSR:
 
 
 @dataclass
+class Harmonics:
+    frequency: float
+    amplitude: float
+    oscillator: Callable[[np.ndarray, float], np.ndarray]
+
+
+@dataclass
 class Timbre:
     pitch_enveloppe: ADSR
     amplitude_enveloppe: ADSR
-    harmonics: np.ndarray
+    harmonics: Iterable[Harmonics]
 
 
 class Note(Playable):
@@ -112,8 +120,8 @@ class Note(Playable):
         # if a numpy nerd can fix this I'd be grateful
         # (at least it works?)
         sound = np.zeros(t.shape)
-        for relative_frequency, relative_amplitude, oscillator in self.timbre.harmonics:
-            sound += relative_amplitude * oscillator(t, relative_frequency * self.tone.frequency * Tone.to_rel_frequency(self.timbre.pitch_enveloppe.get(t, self.raw_length)))
+        for h in self.timbre.harmonics:
+            sound += h.amplitude * h.oscillator(t, h.frequency * self.tone.frequency * Tone.to_rel_frequency(self.timbre.pitch_enveloppe.get(t, self.raw_length)))
 
         sound *= self.timbre.amplitude_enveloppe.get(t, self.raw_length)
         sound *= max_amplitude / np.max(sound)
