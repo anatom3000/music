@@ -22,7 +22,7 @@ class Song:
 
         self.time_generated = 0.0
 
-    def add(self, playable: Union[Playable, Sequence[Playable]]):
+    def add(self, playable: Union[Playable, Sequence[Playable]]) -> None:
         if isinstance(playable, Sequence):
             self.notes.extend(playable)
         else:

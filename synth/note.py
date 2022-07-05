@@ -11,11 +11,11 @@ from synth.constants import EPSILON
 class Tone:
     TONES_ID = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
 
-    def __init__(self, tid):
+    def __init__(self, tid: int):
         self.id = tid
 
     @classmethod
-    def from_notation(cls, tone: str, octave: int, *, flat: bool = False, sharp: bool = False):
+    def from_notation(cls, tone: str, octave: int, *, flat: bool = False, sharp: bool = False) -> "Tone":
         return cls(cls.id_from_notation(tone, octave, flat=flat, sharp=sharp))
 
     @classmethod
@@ -29,11 +29,11 @@ class Tone:
         return self.id_to_freqency(self.id)
 
     @staticmethod
-    def id_to_freqency(tid):
+    def id_to_freqency(tid: int) -> float:
         return 440 * 2 ** ((tid - 69) / 12)
 
     @staticmethod
-    def to_rel_frequency(st: Union[float, np.ndarray]):
+    def to_rel_frequency(st: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return 2 ** (st / 12)
 
     @staticmethod
@@ -96,7 +96,7 @@ class ADSR:
 class Harmonic:
     frequency: float
     amplitude: float
-    oscillator: Callable[[np.ndarray, float], np.ndarray]
+    oscillator: Callable[[np.ndarray, Union[float, np.ndarray]], np.ndarray]
 
 
 @dataclass
