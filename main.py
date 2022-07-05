@@ -1,18 +1,19 @@
-from synth import Song
-from synth.oscillators import *
-from synth.note import *
+from synth import Song, Timbre
+from synth.note import ADSR, Harmonic
+from synth.oscillators import sawtooth, sine
 from synth.playables import Sample
 
 
 def main() -> None:
     bpm = 50
-    melody = "c4 e4 g4 "*4
+    melody = "C4 E4 Ab4 B4"*4
     timbre = Timbre(
         amplitude_enveloppe=ADSR(attack=.05, decay=.05, sustain=0.7, release=.1),
-        pitch_enveloppe=ADSR(attack=0.0, decay=0.2, sustain=0.0, release=.1, level=1),
-        harmonics=np.array(
-            [[1, 1.0, sawtooth], [2, 1.0, sine]]
-        )
+        pitch_enveloppe=ADSR(attack=0.0, decay=0.0, sustain=0.0, release=.0, level=1),
+        harmonics=[
+            Harmonic(frequency=1, amplitude=1.0, oscillator=sawtooth),
+            Harmonic(frequency=2, amplitude=1.0, oscillator=sine)
+        ]
     )
 
     song = Song.from_lines(bpm, [

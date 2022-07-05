@@ -93,7 +93,7 @@ class ADSR:
 
 
 @dataclass
-class Harmonics:
+class Harmonic:
     frequency: float
     amplitude: float
     oscillator: Callable[[np.ndarray, float], np.ndarray]
@@ -103,7 +103,7 @@ class Harmonics:
 class Timbre:
     pitch_enveloppe: ADSR
     amplitude_enveloppe: ADSR
-    harmonics: Iterable[Harmonics]
+    harmonics: Iterable[Harmonic]
 
 
 class Note(Playable):
