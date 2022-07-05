@@ -33,7 +33,7 @@ class Song:
     def generate(self) -> np.ndarray:
         t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
         samples = np.zeros(t.shape, dtype=np.int16)
-        for i in self.notes:
+        for note in self.notes:
             sampled_start = round(SAMPLE_RATE * note.start)
 
             samples[sampled_start:] += note.generate(t[sampled_start:] - note.start, MAX_AMPLITUDE)
