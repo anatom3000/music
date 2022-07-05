@@ -11,8 +11,8 @@ from synth.constants import EPSILON
 class Tone:
     TONES_ID = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
 
-    def __init__(self, id):
-        self.id = id
+    def __init__(self, tid):
+        self.id = tid
 
     @classmethod
     def from_notation(cls, tone: str, octave: int, *, flat: bool = False, sharp: bool = False):
@@ -29,8 +29,8 @@ class Tone:
         return self.id_to_freqency(self.id)
 
     @staticmethod
-    def id_to_freqency(id):
-        return 440 * 2 ** ((id - 69) / 12)
+    def id_to_freqency(tid):
+        return 440 * 2 ** ((tid - 69) / 12)
 
     @staticmethod
     def to_rel_frequency(st: Union[float, np.ndarray]):
