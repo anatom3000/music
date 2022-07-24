@@ -27,22 +27,24 @@ class Playable(ABC):
         pass
 
     @staticmethod
-    def play(samples: np.ndarray, *, wait: bool = True) -> None:
+    def play(samples: np.ndarray, *, wait: bool = True) -> pygame.mixer.Channel:
         sound = pygame.sndarray.make_sound(samples)
-        sound.play(-1)
+        channel = sound.play(-1)
         if wait:
             pygame.time.wait(int(samples.shape[0] / SAMPLE_RATE * 1000))
             pygame.mixer.stop()
+        return channel
 
-    def generate_and_play(self, *, wait: bool = True, debug: bool = False) -> None:
+    def generate_and_play(self, *, wait: bool = True, debug: bool = False) -> pygame.mixer.Channel:
         if debug:
             print("Starting generating sound...")
         samples = self.generate()
         if debug:
             print("Finished generating, started playing...")
-        self.play(samples, wait=wait)
+        channel = self.play(samples, wait=wait)
         if debug:
             print("Finished playing!")
+        return channel
 
 
 class Sample(Playable):
@@ -69,4 +71,4 @@ class Sample(Playable):
     def generate(self) -> np.ndarray:
         local_data = self.data.copy()
         local_data.resize(round(self.length*SAMPLE_RATE))
-        return local_data * self.volume
+        return (local_data / np.max(local_data) * MAX_AMPLITUDE).astype(np.int16)

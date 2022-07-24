@@ -1,11 +1,14 @@
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, field
 
 import numpy as np
 from typing import Union, Optional, Callable
 
 from synth.playables import Playable
 from synth.constants import EPSILON, MAX_AMPLITUDE, SAMPLE_RATE
+
+Oscillator = Callable[[np.ndarray, Union[float, np.ndarray]], np.ndarray]
+Effect = Callable[[np.ndarray], np.ndarray]
 
 
 class Tone:
@@ -96,7 +99,7 @@ class ADSR:
 class Harmonic:
     frequency: float
     amplitude: float
-    oscillator: Callable[[np.ndarray, Union[float, np.ndarray]], np.ndarray]
+    oscillator: Oscillator
 
 
 @dataclass
@@ -104,6 +107,7 @@ class Timbre:
     pitch_enveloppe: ADSR
     amplitude_enveloppe: ADSR
     harmonics: Iterable[Harmonic]
+    effects: Sequence[Effect] = ()
 
 
 class Note(Playable):
@@ -123,9 +127,17 @@ class Note(Playable):
         t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
         sound = np.zeros(t.shape)
         for h in self.timbre.harmonics:
-            sound += h.amplitude * h.oscillator(t, h.frequency * self.tone.frequency * Tone.to_rel_frequency(self.timbre.pitch_enveloppe.get(t, self.raw_length)))
+            sound += h.amplitude * h.oscillator(t,
+                                                h.frequency
+                                                * self.tone.frequency
+                                                * Tone
+                                                .to_rel_frequency(self.timbre.pitch_enveloppe.get(t, self.raw_length)))
 
         sound *= self.timbre.amplitude_enveloppe.get(t, self.raw_length)
+
+        for e in self.timbre.effects:
+            sound = e(sound)
+
         sound *= self.volume * MAX_AMPLITUDE / np.max(sound)
 
         return sound.astype(np.int16)
