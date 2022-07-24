@@ -47,6 +47,16 @@ class Playable(ABC):
         return channel
 
 
+class Noise(Playable):
+    def __init__(self, length: float, start: float = 0.0, volume: float = 1.0):
+        self.start = start
+        self.length = length
+        self.volume = volume
+
+    def generate(self) -> np.ndarray:
+        return (np.random.random(round(self.length*SAMPLE_RATE)) * self.volume * MAX_AMPLITUDE).astype(np.int16)
+
+
 class Sample(Playable):
     def __init__(self, file_path: Union[Path, str], start: float = 0.0, length: float = -1, volume: float = 1.0):
         self.file = file_path

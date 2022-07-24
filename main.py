@@ -1,5 +1,3 @@
-
-
 def main() -> None:
     from synth import Song, Timbre, ADSR, Harmonic
     import synth.oscillators as osc
@@ -22,5 +20,11 @@ def main() -> None:
     Song.from_lines(bpm, [(timbre, melody)]).generate_and_play(debug=True)
 
 
+def noise() -> None:
+    from synth import Noise
+
+    Noise(length=10.0, volume=0.5).generate_and_play()
+
+
 if __name__ == '__main__':
-    main()
+    noise()
