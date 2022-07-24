@@ -5,7 +5,7 @@ import numpy as np
 from typing import Union, Optional, Callable
 
 from synth.playables import Playable
-from synth.constants import EPSILON
+from synth.constants import EPSILON, MAX_AMPLITUDE, SAMPLE_RATE
 
 
 class Tone:
@@ -107,23 +107,25 @@ class Timbre:
 
 
 class Note(Playable):
-    def __init__(self, tone: Tone, timbre: Timbre, start: float = 0.0, length: float = 1.0):
+    def __init__(self, tone: Tone, timbre: Timbre, start: float = 0.0, length: float = 1.0, volume: float = 1.0):
         self.tone = tone
         self.timbre = timbre
 
         self.start = start
         self.raw_length = length
         self.length = self.raw_length + self.timbre.amplitude_enveloppe.release
+        self.volume = volume
 
-    def generate(self, t: np.ndarray, max_amplitude: int) -> np.ndarray:
+    def generate(self) -> np.ndarray:
         # terrible, unoptimized code
         # if a numpy nerd can fix this I'd be grateful
         # (at least it works?)
+        t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
         sound = np.zeros(t.shape)
         for h in self.timbre.harmonics:
             sound += h.amplitude * h.oscillator(t, h.frequency * self.tone.frequency * Tone.to_rel_frequency(self.timbre.pitch_enveloppe.get(t, self.raw_length)))
 
         sound *= self.timbre.amplitude_enveloppe.get(t, self.raw_length)
-        sound *= max_amplitude / np.max(sound)
+        sound *= self.volume * MAX_AMPLITUDE / np.max(sound)
 
         return sound.astype(np.int16)
