@@ -23,7 +23,7 @@ def main() -> None:
 def noise() -> None:
     from synth import Noise
 
-    Noise(length=10.0, volume=0.5).generate_and_play()
+    Noise(length=10.0, volume=1.0).generate_and_save("sound.wav")
 
 
 if __name__ == '__main__':

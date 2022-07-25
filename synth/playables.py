@@ -1,3 +1,6 @@
+import pathlib
+import struct
+import wave
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Union
@@ -35,6 +38,15 @@ class Playable(ABC):
             pygame.mixer.stop()
         return channel
 
+    @staticmethod
+    def save(samples: np.ndarray, path: Union[str, pathlib.Path]):
+        with wave.open(path, mode='w') as f:
+            f.setnchannels(1)  # mono
+            f.setsampwidth(2)
+            f.setframerate(SAMPLE_RATE)
+            for i in samples:
+                f.writeframesraw(struct.pack('<h', i))
+
     def generate_and_play(self, *, wait: bool = True, debug: bool = False) -> pygame.mixer.Channel:
         if debug:
             print("Starting generating sound...")
@@ -45,6 +57,10 @@ class Playable(ABC):
         if debug:
             print("Finished playing!")
         return channel
+
+    def generate_and_save(self, path: Union[str, pathlib.Path]):
+        samples = self.generate()
+        self.save(samples, path)
 
 
 class Noise(Playable):

@@ -8,7 +8,7 @@ from synth.playables import Playable
 from synth.constants import EPSILON, MAX_AMPLITUDE, SAMPLE_RATE
 
 Oscillator = Callable[[np.ndarray, Union[float, np.ndarray]], np.ndarray]
-Effect = Callable[[np.ndarray], np.ndarray]
+Effect = Callable[[np.ndarray, np.ndarray, "Note"], np.ndarray]
 
 
 class Tone:
@@ -136,7 +136,7 @@ class Note(Playable):
         sound *= self.timbre.amplitude_enveloppe.get(t, self.raw_length)
 
         for e in self.timbre.effects:
-            sound = e(sound)
+            sound = e(t, sound, self)
 
         sound *= self.volume * MAX_AMPLITUDE / np.max(sound)
 
