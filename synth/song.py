@@ -4,15 +4,16 @@ from typing import Union, Iterable
 import numpy as np
 
 from synth.note import Timbre, Tone, Note
-from synth.playables import Playable
+from synth.playables import Playable, Effect
 from synth.constants import SAMPLE_RATE, MAX_AMPLITUDE
 
 
 class Song(Playable):
-    def __init__(self, playables: Sequence[Playable], volume: float = 1.0):
+    def __init__(self, playables: Sequence[Playable], volume: float = 1.0, effects: Sequence[Effect] = None):
         self.playables = sorted(playables, key=lambda x: x.start)
         self.length = max(map(lambda x: x.start + x.length, self.playables))
         self.volume = volume
+        self.effects = [] if effects is None else effects
 
         self.min_buffer_time = 1.0
         self.extra_time = 1.0
@@ -27,13 +28,12 @@ class Song(Playable):
 
         self.length = max(map(lambda x: x.start + x.length, self.playables))
 
-    def generate(self) -> np.ndarray:
-        t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
+    def generate_raw(self, t) -> np.ndarray:
         samples = np.zeros(t.shape, dtype=np.int16)
         for p in self.playables:
             sampled_start = round(SAMPLE_RATE * p.start)
 
-            samples[sampled_start:round(sampled_start+p.length*SAMPLE_RATE)] += p.generate()
+            samples[sampled_start:round(sampled_start + p.length * SAMPLE_RATE)] += p.generate()
             samples.clip(-MAX_AMPLITUDE, MAX_AMPLITUDE)
 
             self.time_generated = p.start
@@ -41,7 +41,7 @@ class Song(Playable):
         return (samples * self.volume).astype(np.int16)
 
     @classmethod
-    def from_lines(cls, bpm: int, lines: Iterable[tuple[Timbre, str]]) -> "Song":
+    def from_lines(cls, bpm: int, lines: Iterable[tuple[Timbre, str, Sequence[Effect]]]) -> "Song":
         notes = []
         for line in lines:
             timbre = line[0]
@@ -65,6 +65,7 @@ class Song(Playable):
                     timbre=timbre,
                     start=t * 60 / bpm,
                     length=note_length * 60 / bpm,
+                    effects=line[2]
                 ))
                 t += note_length
 

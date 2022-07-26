@@ -11,13 +11,15 @@ def main() -> None:
         harmonics=[
             Harmonic(frequency=1, amplitude=1.0, oscillator=osc.sawtooth),
             Harmonic(frequency=2, amplitude=1.0, oscillator=osc.sine)
-        ],
-        effects=[
-            eff.Noise(1e-4)
         ]
     )
+    effects = [
+        eff.Noise(1e-4),
+        eff.normalize
+    ]
 
-    Song.from_lines(bpm, [(timbre, melody)]).generate_and_play(debug=True)
+    s = Song.from_lines(bpm, [(timbre, melody, effects)])
+    s.generate_and_play(debug=True)
 
 
 def noise() -> None:
@@ -26,5 +28,36 @@ def noise() -> None:
     Noise(length=10.0, volume=1.0).generate_and_save("sound.wav")
 
 
+def sample_transpose() -> None:
+    from synth import Sample
+    from synth.effects import Scratch
+    s = Sample("samples/unity_mono_44.1k.wav",
+               offset=5,
+               length=5,
+               effects=[
+                   Scratch(1e-4)
+               ]
+    )
+    s.generate_and_play()
+
+
+def scratched_silence() -> None:
+    from synth import Silence
+    from synth.effects import Scratch
+    s = Silence(length=10, effects=[Scratch(1e-2)])
+    s.generate_and_play(debug=True)
+
+
+def gen_a440() -> None:
+    from synth import PlayableOscillator
+    from synth import effects as eff
+    a440 = PlayableOscillator(frequency=440)
+    from synth.effects import Transpose
+    a440.effects = [
+        Transpose(18),
+        Transpose(-18)
+    ]
+    a440.generate_and_play(debug=True)
+
 if __name__ == '__main__':
-    noise()
+    scratched_silence()

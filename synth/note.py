@@ -4,11 +4,11 @@ from dataclasses import dataclass, field
 import numpy as np
 from typing import Union, Optional, Callable
 
-from synth.playables import Playable
+from synth.playables import Playable, Oscillator
 from synth.constants import EPSILON, MAX_AMPLITUDE, SAMPLE_RATE
 
-Oscillator = Callable[[np.ndarray, Union[float, np.ndarray]], np.ndarray]
-Effect = Callable[[np.ndarray, np.ndarray, "Note"], np.ndarray]
+
+
 
 
 class Tone:
@@ -107,24 +107,24 @@ class Timbre:
     pitch_enveloppe: ADSR
     amplitude_enveloppe: ADSR
     harmonics: Iterable[Harmonic]
-    effects: Sequence[Effect] = ()
 
 
 class Note(Playable):
-    def __init__(self, tone: Tone, timbre: Timbre, start: float = 0.0, length: float = 1.0, volume: float = 1.0):
+    def __init__(self, tone: Tone, timbre: Timbre, start: float = 0.0, length: float = 1.0, volume: float = 1.0, effects=None):
         self.tone = tone
         self.timbre = timbre
+
+        self.effects = [] if effects is None else effects
 
         self.start = start
         self.raw_length = length
         self.length = self.raw_length + self.timbre.amplitude_enveloppe.release
         self.volume = volume
 
-    def generate(self) -> np.ndarray:
+    def generate_raw(self, t) -> (np.ndarray, np.ndarray):
         # terrible, unoptimized code
         # if a numpy nerd can fix this I'd be grateful
         # (at least it works?)
-        t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
         sound = np.zeros(t.shape)
         for h in self.timbre.harmonics:
             sound += h.amplitude * h.oscillator(t,
@@ -135,9 +135,4 @@ class Note(Playable):
 
         sound *= self.timbre.amplitude_enveloppe.get(t, self.raw_length)
 
-        for e in self.timbre.effects:
-            sound = e(t, sound, self)
-
-        sound *= self.volume * MAX_AMPLITUDE / np.max(sound)
-
-        return sound.astype(np.int16)
+        return sound

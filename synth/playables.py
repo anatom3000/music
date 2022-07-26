@@ -1,33 +1,48 @@
+import copy
 import pathlib
 import struct
 import wave
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Union
+from typing import Union, Callable
 
+from librosa import load as rosaload
 import numpy as np
 import pygame
-from scipy.io import wavfile
-from scipy.signal import resample
+import pyrubberband as pyrubberband
 
 from synth.constants import MAX_AMPLITUDE, SAMPLE_RATE
+from synth.oscillators import sine
 
 pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, allowedchanges=0)
 pygame.init()
+
+Effect = Callable[[np.ndarray, np.ndarray, "Note"], np.ndarray]
+Oscillator = Callable[[np.ndarray, Union[float, np.ndarray]], np.ndarray]
 
 
 class Playable(ABC):
     start: float
     length: float
     volume: float
+    effects: Sequence[Effect]
 
     @property
     def end(self):
         return self.start + self.length
 
     @abstractmethod
-    def generate(self) -> np.ndarray:
+    def generate_raw(self, t) -> np.ndarray:
         pass
+
+    def generate(self):
+        t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
+        sound = self.generate_raw(t)
+        for e in self.effects:
+            sound = e(t, sound, self)
+
+        return (sound * self.volume * MAX_AMPLITUDE / np.max(sound)).astype(np.int16)
 
     @staticmethod
     def play(samples: np.ndarray, *, wait: bool = True) -> pygame.mixer.Channel:
@@ -69,32 +84,62 @@ class Noise(Playable):
         self.length = length
         self.volume = volume
 
-    def generate(self) -> np.ndarray:
-        return (np.random.random(round(self.length*SAMPLE_RATE)) * self.volume * MAX_AMPLITUDE).astype(np.int16)
+    def generate_raw(self, t: np.ndarray) -> np.ndarray:
+        return np.random.random(t.shape) * self.volume * MAX_AMPLITUDE
 
 
 class Sample(Playable):
-    def __init__(self, file_path: Union[Path, str], start: float = 0.0, length: float = -1, volume: float = 1.0):
-        self.file = file_path
-
-        raw_sample_rate, self.data = wavfile.read(self.file)
-
-        if raw_sample_rate != SAMPLE_RATE:
-            # https://stackoverflow.com/questions/64782091/how-to-resample-a-wav-sound-file-which-is-being-read-using-the-wavfile-read
-            sample_number = round(self.data.shape[0] * float(SAMPLE_RATE) / raw_sample_rate)
-            self.data = resample(self.data, sample_number)
+    def __init__(self, file_path: Union[Path, str], offset: float = 0.0, start: float = 0.0, length: float = None,
+                 volume: float = 1.0, effects: Sequence[Effect] = None):
+        self.data, _ = rosaload(file_path, sr=SAMPLE_RATE, mono=True, offset=offset, duration=length)
 
         self.start = start
+        self.length = length
         self.volume = volume
+        self.effects = [] if effects is None else effects
 
-        if length > 0:
-            self.data = self.data[:round(SAMPLE_RATE * length)]
+        self.data = self.data / np.max(self.data) * MAX_AMPLITUDE * self.volume
 
-        self.length = len(self.data) / SAMPLE_RATE
+    def generate_raw(self, t: np.ndarray) -> np.ndarray:
+        return self.data
 
-        self.data = (self.data / np.max(self.data) * MAX_AMPLITUDE).astype(np.int16)
+    def transpose(self, interval: int):
+        if interval != 0:
+            self.data = (MAX_AMPLITUDE*pyrubberband.pyrb.pitch_shift(self.data.astype(np.float64)/MAX_AMPLITUDE, sr=SAMPLE_RATE, n_steps=interval)).astype(np.int16)
 
-    def generate(self) -> np.ndarray:
-        local_data = self.data.copy()
-        local_data.resize(round(self.length*SAMPLE_RATE))
-        return (local_data / np.max(local_data) * MAX_AMPLITUDE).astype(np.int16)
+    def transposed(self, interval: int):
+        new = copy.deepcopy(self)
+        new.transpose(interval)
+        return new
+
+    def __add__(self, other):
+        return self.transposed(other)
+
+    def __sub__(self, other):
+        return self.transposed(-other)
+
+
+class PlayableOscillator(Playable):
+    def __init__(self, frequency: float = 440, oscillator: Oscillator = sine, start: float = 0.0, length: float = 1.0, volume: float = 1.0, effects: Sequence[Effect] = None):
+        self.frequency = frequency
+        self.oscillator = oscillator
+
+        self.start = start
+        self.length = length
+        self.volume = volume
+        self.effects = [] if effects is None else effects
+
+    def generate_raw(self, t: np.ndarray) -> np.ndarray:
+        return MAX_AMPLITUDE*self.oscillator(t, self.frequency)
+
+
+class Silence(Playable):
+    def __init__(self, start: float = 0.0, length: float = 1.0, volume: float = 1.0, effects: Sequence[Effect] = None):
+
+        self.start = start
+        self.length = length
+        self.volume = volume
+        self.effects = [] if effects is None else effects
+
+    def generate_raw(self, t: np.ndarray) -> np.ndarray:
+        return np.zeros(t.shape)
