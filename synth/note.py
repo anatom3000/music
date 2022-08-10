@@ -1,14 +1,13 @@
-from collections.abc import Iterable, Sequence
-from dataclasses import dataclass, field
+from __future__ import annotations
+
+from collections.abc import Iterable
+from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
-from typing import Union, Optional, Callable
 
+from synth.constants import EPSILON
 from synth.playables import Playable, Oscillator
-from synth.constants import EPSILON, MAX_AMPLITUDE, SAMPLE_RATE
-
-
-
 
 
 class Tone:
@@ -18,11 +17,11 @@ class Tone:
         self.id = tid
 
     @classmethod
-    def from_notation(cls, tone: str, octave: int, *, flat: bool = False, sharp: bool = False) -> "Tone":
+    def from_notation(cls, tone: str, octave: int, *, flat: bool = False, sharp: bool = False) -> Tone:
         return cls(cls.id_from_notation(tone, octave, flat=flat, sharp=sharp))
 
     @classmethod
-    def from_string(cls, note: str) -> "Tone":
+    def from_string(cls, note: str) -> Tone:
         if note[1] in '#b':
             return cls.from_notation(note[0], int(note[2]), flat=note[1] == 'b', sharp=note[1] == '#')
         return cls.from_notation(note[0], int(note[1]))
@@ -36,7 +35,7 @@ class Tone:
         return 440 * 2 ** ((tid - 69) / 12)
 
     @staticmethod
-    def to_rel_frequency(st: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def to_rel_frequency(st: float | np.ndarray) -> float | np.ndarray:
         return 2 ** (st / 12)
 
     @staticmethod
@@ -58,7 +57,7 @@ class ADSR:
         self.release = release + EPSILON
         self.level = level
 
-    def get(self, t: np.ndarray, duration: Union[np.ndarray, float]) -> np.ndarray:
+    def get(self, t: np.ndarray, duration: float | np.ndarray) -> np.ndarray:
         # Calculations to accommodate attack/decay phase cut by note duration.
         new_attack = np.minimum(self.attack, duration)
         new_decay = np.clip(duration - self.attack, 0.0, self.decay)
@@ -73,7 +72,7 @@ class ADSR:
 
         return attack_signal * decay_signal * release_signal * self.level
 
-    def __mul__(self, other: float) -> 'ADSR':
+    def __mul__(self, other: float) -> ADSR:
         return self.__class__(
             attack=self.attack * other,
             decay=self.decay * other,
@@ -82,7 +81,7 @@ class ADSR:
         )
 
     @staticmethod
-    def ramp(t: np.ndarray, duration: Optional[Union[np.ndarray, float]] = None, start: Union[np.ndarray, float] = 0.0,
+    def ramp(t: np.ndarray, duration: Optional[float | np.ndarray] = None, start: float | np.ndarray = 0.0,
              inverse: bool = False) -> np.ndarray:
         duration = t.shape[0] if duration is None else duration
 

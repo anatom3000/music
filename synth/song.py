@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 from collections.abc import Sequence
 from typing import Union, Iterable
 
 import numpy as np
 
+from synth.constants import SAMPLE_RATE, MAX_AMPLITUDE
 from synth.note import Timbre, Tone, Note
 from synth.playables import Playable, Effect
-from synth.constants import SAMPLE_RATE, MAX_AMPLITUDE
 
 
 class Song(Playable):
@@ -41,7 +43,7 @@ class Song(Playable):
         return (samples * self.volume).astype(np.int16)
 
     @classmethod
-    def from_lines(cls, bpm: int, lines: Iterable[tuple[Timbre, str, Sequence[Effect]]]) -> "Song":
+    def from_lines(cls, bpm: int, lines: Iterable[tuple[Timbre, str, Sequence[Effect]]]) -> Song:
         notes = []
         for line in lines:
             timbre = line[0]

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import pathlib
 import struct
@@ -7,18 +9,18 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Union, Callable
 
-from librosa import load as rosaload
 import numpy as np
 import pygame
 import pyrubberband as pyrubberband
+from librosa import load as rosaload
 
 from synth.constants import MAX_AMPLITUDE, SAMPLE_RATE
+from synth.effects import Effect
 from synth.oscillators import sine
 
 pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, allowedchanges=0)
 pygame.init()
 
-Effect = Callable[[np.ndarray, np.ndarray, "Note"], np.ndarray]
 Oscillator = Callable[[np.ndarray, Union[float, np.ndarray]], np.ndarray]
 
 
@@ -37,10 +39,13 @@ class Playable(ABC):
         pass
 
     def generate(self):
+        for e in self.effects:
+            e.preprocess(self)
+
         t = np.linspace(0, self.length, round((self.length * SAMPLE_RATE)))
         sound = self.generate_raw(t)
         for e in self.effects:
-            sound = e(t, sound, self)
+            sound = e.postprocess(t, sound, self)
 
         return (sound * self.volume * MAX_AMPLITUDE / np.max(sound)).astype(np.int16)
 

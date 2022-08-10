@@ -4,7 +4,7 @@ def main() -> None:
     import synth.effects as eff
 
     bpm = 360
-    melody = "C4 E4 Ab4 B4"*4
+    melody = "C4 E4 Ab4 B4" * 4
     timbre = Timbre(
         amplitude_enveloppe=ADSR(attack=.05, decay=.05, sustain=0.7, release=.1),
         pitch_enveloppe=ADSR(attack=0.0, decay=0.0, sustain=0.0, release=.0, level=1),
@@ -15,7 +15,7 @@ def main() -> None:
     )
     effects = [
         eff.Noise(1e-4),
-        eff.normalize
+        eff.Normalize
     ]
 
     s = Song.from_lines(bpm, [(timbre, melody, effects)])
@@ -29,15 +29,18 @@ def noise() -> None:
 
 
 def sample_transpose() -> None:
+    print('a')
     from synth import Sample
     from synth.effects import Scratch
-    s = Sample("samples/unity_mono_44.1k.wav",
-               offset=5,
-               length=5,
-               effects=[
-                   Scratch(1e-4)
-               ]
+    s = Sample(
+        "samples/unity_mono_44.1k.wav",
+        offset=5,
+        length=5,
+        effects=[
+            Scratch(1e-4)
+        ]
     )
+
     s.generate_and_play()
 
 
@@ -50,7 +53,6 @@ def scratched_silence() -> None:
 
 def gen_a440() -> None:
     from synth import PlayableOscillator
-    from synth import effects as eff
     a440 = PlayableOscillator(frequency=440)
     from synth.effects import Transpose
     a440.effects = [
@@ -59,5 +61,6 @@ def gen_a440() -> None:
     ]
     a440.generate_and_play(debug=True)
 
+
 if __name__ == '__main__':
-    scratched_silence()
+    sample_transpose()
