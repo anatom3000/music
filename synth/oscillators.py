@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Union
 
 import numpy as np
@@ -7,6 +8,8 @@ import numpy as np
 """
 Module containing various types of oscillators.
 """
+
+Oscillator = Callable[[np.ndarray, Union[float, np.ndarray]], np.ndarray]
 
 
 def sine(t: np.ndarray, frequency: float | np.ndarray = 1.0) -> np.ndarray:

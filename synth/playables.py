@@ -7,21 +7,21 @@ import wave
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Union, Callable
+from typing import Union
 
 import numpy as np
 import pygame
 import pyrubberband as pyrubberband
 from librosa import load as rosaload
 
-from synth.constants import MAX_AMPLITUDE, SAMPLE_RATE
-from synth.effects import Effect
-from synth.oscillators import sine
+from .constants import MAX_AMPLITUDE, SAMPLE_RATE
+from .effects import Effect
+from .oscillators import Oscillator, sine
 
 pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, allowedchanges=0)
 pygame.init()
 
-Oscillator = Callable[[np.ndarray, Union[float, np.ndarray]], np.ndarray]
+
 
 
 class Playable(ABC):

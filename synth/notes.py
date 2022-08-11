@@ -6,8 +6,8 @@ from typing import Optional
 
 import numpy as np
 
-from synth.constants import EPSILON
-from synth.playables import Playable, Oscillator
+from .constants import EPSILON
+from .playables import Playable, Oscillator
 
 
 class Tone:
@@ -109,7 +109,8 @@ class Timbre:
 
 
 class Note(Playable):
-    def __init__(self, tone: Tone, timbre: Timbre, start: float = 0.0, length: float = 1.0, volume: float = 1.0, effects=None):
+    def __init__(self, tone: Tone, timbre: Timbre, start: float = 0.0, length: float = 1.0, volume: float = 1.0,
+                 effects=None):
         self.tone = tone
         self.timbre = timbre
 

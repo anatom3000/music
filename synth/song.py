@@ -5,9 +5,9 @@ from typing import Union, Iterable
 
 import numpy as np
 
-from synth.constants import SAMPLE_RATE, MAX_AMPLITUDE
-from synth.note import Timbre, Tone, Note
-from synth.playables import Playable, Effect
+from .constants import SAMPLE_RATE, MAX_AMPLITUDE
+from .notes import Timbre, Tone, Note
+from .playables import Playable, Effect
 
 
 class Song(Playable):

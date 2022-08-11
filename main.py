@@ -25,19 +25,20 @@ def main() -> None:
 def noise() -> None:
     from synth import Noise
 
-    Noise(length=10.0, volume=1.0).generate_and_save("sound.wav")
+    Noise(length=10.0, volume=1.0).generate_and_save("out/sound.wav")
 
 
 def sample_transpose() -> None:
     print('a')
     from synth import Sample
-    from synth.effects import Scratch
+    from synth.effects import Noise
+    from synth.effects.modulators import LFO
     s = Sample(
         "samples/unity_mono_44.1k.wav",
         offset=5,
-        length=5,
+        length=20,
         effects=[
-            Scratch(1e-4)
+            Noise(LFO(frequency=2.0, amplitude=1e-1, center=1e-1))
         ]
     )
 

@@ -131,4 +131,6 @@ dmypy.json
 
 # project specific files
 misc/
-*.wav
+
+# audio outputs
+out/*
