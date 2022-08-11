@@ -33,14 +33,17 @@ def sample_transpose() -> None:
     from synth import Sample
     from synth.effects import Noise
     from synth.effects.modulators import LFO
+    from synth.effects import LowPassFilter
+    print("b")
     s = Sample(
         "samples/unity_mono_44.1k.wav",
-        offset=5,
-        length=20,
         effects=[
-            Noise(LFO(frequency=2.0, amplitude=1e-1, center=1e-1))
+            LowPassFilter(880, resonance=0.5, resonance_width=220, cutout_width=880),
+            #Noise(LFO(frequency=2.0, amplitude=1e-1, center=1e-1))
         ]
     )
+    print("c")
+
 
     s.generate_and_play()
 
@@ -61,6 +64,27 @@ def gen_a440() -> None:
         Transpose(-18)
     ]
     a440.generate_and_play(debug=True)
+
+
+def lowpassfilter() -> None:
+    from synth import PlayableOscillator
+    from synth.effects import LowPassFilter
+    import synth.oscillators as osc
+    from synth.effects.modulators import LinearTransition
+
+    signals = []
+    for i in range(8):
+        signal = PlayableOscillator(frequency=440, oscillator=osc.sine, length=1.0)
+        signal.effects = [
+            LowPassFilter(i*110)  # LinearTransition(0.0, 100.0, signal.length, 1000.0)
+        ]
+        signals.append(signal.generate())
+
+    print("Finished generating!")
+
+    from synth import Playable
+    for s in signals:
+        Playable.play(s, wait=True)
 
 
 if __name__ == '__main__':

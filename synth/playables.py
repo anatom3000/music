@@ -22,8 +22,6 @@ pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, allowedchanges=0)
 pygame.init()
 
 
-
-
 class Playable(ABC):
     start: float
     length: float
@@ -99,7 +97,7 @@ class Sample(Playable):
         self.data, _ = rosaload(file_path, sr=SAMPLE_RATE, mono=True, offset=offset, duration=length)
 
         self.start = start
-        self.length = length
+        self.length = self.data.shape[0] / SAMPLE_RATE if length is None else length
         self.volume = volume
         self.effects = [] if effects is None else effects
 
