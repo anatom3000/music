@@ -5,8 +5,8 @@ from abc import ABC
 import numpy as np
 import pyrubberband
 
-from ..constants import MAX_AMPLITUDE, SAMPLE_RATE
 from . import modulators
+from ..constants import MAX_AMPLITUDE, SAMPLE_RATE
 
 
 class Effect(ABC):
@@ -22,7 +22,8 @@ class Noise(Effect):
         self.volume = volume
 
     def postprocess(self, t: np.ndarray, sound: np.ndarray, _p: Playable) -> np.ndarray:
-        return sound + (np.random.random(sound.shape) * modulators.EffectModulator.handle(self.volume, t) * MAX_AMPLITUDE)
+        return sound + (
+                    np.random.random(sound.shape) * modulators.EffectModulator.handle(self.volume, t) * MAX_AMPLITUDE)
 
 
 class Normalize(Effect):
@@ -37,7 +38,9 @@ class Transpose(Effect):
     def postprocess(self, t: np.ndarray, sound: np.ndarray, _p: Playable) -> np.ndarray:
         if self.interval != 0:
             return (MAX_AMPLITUDE * pyrubberband.pyrb.pitch_shift(sound.astype(np.float64) / MAX_AMPLITUDE,
-                                                                  sr=SAMPLE_RATE, n_steps=modulators.EffectModulator.handle(self.interval, t))).astype(
+                                                                  sr=SAMPLE_RATE,
+                                                                  n_steps=modulators.EffectModulator.handle(
+                                                                      self.interval, t))).astype(
                 np.int16)
         else:
             return sound

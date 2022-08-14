@@ -108,7 +108,9 @@ class Sample(Playable):
 
     def transpose(self, interval: int):
         if interval != 0:
-            self.data = (MAX_AMPLITUDE*pyrubberband.pyrb.pitch_shift(self.data.astype(np.float64)/MAX_AMPLITUDE, sr=SAMPLE_RATE, n_steps=interval)).astype(np.int16)
+            self.data = (MAX_AMPLITUDE * pyrubberband.pyrb.pitch_shift(self.data.astype(np.float64) / MAX_AMPLITUDE,
+                                                                       sr=SAMPLE_RATE, n_steps=interval)).astype(
+                np.int16)
 
     def transposed(self, interval: int):
         new = copy.deepcopy(self)
@@ -123,7 +125,8 @@ class Sample(Playable):
 
 
 class PlayableOscillator(Playable):
-    def __init__(self, frequency: float = 440, oscillator: Oscillator = sine, start: float = 0.0, length: float = 1.0, volume: float = 1.0, effects: Sequence[Effect] = None):
+    def __init__(self, frequency: float = 440, oscillator: Oscillator = sine, start: float = 0.0, length: float = 1.0,
+                 volume: float = 1.0, effects: Sequence[Effect] = None):
         self.frequency = frequency
         self.oscillator = oscillator
 
@@ -133,12 +136,11 @@ class PlayableOscillator(Playable):
         self.effects = [] if effects is None else effects
 
     def generate_raw(self, t: np.ndarray) -> np.ndarray:
-        return MAX_AMPLITUDE*self.oscillator(t, self.frequency)
+        return MAX_AMPLITUDE * self.oscillator(t, self.frequency)
 
 
 class Silence(Playable):
     def __init__(self, start: float = 0.0, length: float = 1.0, volume: float = 1.0, effects: Sequence[Effect] = None):
-
         self.start = start
         self.length = length
         self.volume = volume

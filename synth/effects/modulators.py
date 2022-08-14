@@ -22,14 +22,15 @@ class EffectModulator(ABC):
 
 
 class LFO(EffectModulator):
-    def __init__(self, frequency: float, amplitude: float, center: float = 0.0, oscillator: oscillators.Oscillator = oscillators.sine):
+    def __init__(self, frequency: float, amplitude: float, center: float = 0.0,
+                 oscillator: oscillators.Oscillator = oscillators.sine):
         self.oscillator = oscillator
         self.center = center
         self.amplitude = amplitude
         self.frequency = frequency
 
     def get_value(self, t: np.ndarray) -> np.ndarray:
-        return self.amplitude*self.oscillator(t, self.frequency) + self.center
+        return self.amplitude * self.oscillator(t, self.frequency) + self.center
 
 
 class LinearTransition(EffectModulator):
